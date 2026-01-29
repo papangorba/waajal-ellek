@@ -1,25 +1,37 @@
 import 'package:flutter/foundation.dart';
-import '../models/user_model.dart';
-import '../services/data_service.dart';
+import '../models/auth_user_model.dart';
 
 class UserProvider with ChangeNotifier {
-  final DataService _dataService = DataService();
-  UserModel? _userProfile;
+  UserProfile? _userProfile;
   bool _isLoading = false;
   String? _errorMessage;
 
-  UserModel? get userProfile => _userProfile;
+  UserProfile? get userProfile => _userProfile;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  void setUserProfile(UserProfile? profile) {
+    _userProfile = profile;
+    notifyListeners();
+  }
+
   Future<void> fetchUserProfile(String userId) async {
+
+    // Si on a un endpoint /api/user/profile/{userId}
+    /*
     try {
       _isLoading = true;
       notifyListeners();
 
-      await Future.delayed(const Duration(milliseconds: 300));
+      final response = await http.get(
+        ApiConfig.uri('/api/user/profile/$userId'),
+        headers: ApiConfig.getauthHeaders(accessToken),
+      );
 
-      _userProfile = _dataService.getUserProfile(userId);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _userProfile = UserProfile.fromJson(data);
+      }
 
       _isLoading = false;
       notifyListeners();
@@ -28,17 +40,27 @@ class UserProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+    */
   }
 
+  // Mise à jour du profil
   Future<bool> updateProfile(Map<String, dynamic> updates) async {
     try {
       _isLoading = true;
       notifyListeners();
 
+      // TODO: l'appel api pour mettre à jour le profil
+      // final response = await http.put(
+      //   ApiConfig.uri('/api/user/profile'),
+      //   headers: ApiConfig.getauthHeaders(accessToken),
+      //   body: jsonEncode(updates),
+      // );
+
       await Future.delayed(const Duration(milliseconds: 300));
 
+      // Pour l'instant, mise à jour locale uniquement
       if (_userProfile != null) {
-        _userProfile = UserModel(
+        _userProfile = UserProfile(
           id: _userProfile!.id,
           matricule: updates['matricule'] ?? _userProfile!.matricule,
           nom: updates['nom'] ?? _userProfile!.nom,
@@ -46,15 +68,9 @@ class UserProvider with ChangeNotifier {
           email: updates['email'] ?? _userProfile!.email,
           telephone: updates['telephone'] ?? _userProfile!.telephone,
           grade: updates['grade'] ?? _userProfile!.grade,
-          dateNaissance: updates['date_naissance'] != null
-              ? DateTime.parse(updates['date_naissance'])
-              : _userProfile!.dateNaissance,
-          dateEngagement: updates['date_engagement'] != null
-              ? DateTime.parse(updates['date_engagement'])
-              : _userProfile!.dateEngagement,
-          dateRetraite: updates['date_retraite'] != null
-              ? DateTime.parse(updates['date_retraite'])
-              : _userProfile!.dateRetraite,
+          dateNaissance: updates['dateNaissance'] ?? _userProfile!.dateNaissance,
+          dateEngagement: updates['dateEngagement'] ?? _userProfile!.dateEngagement,
+          dateRetraite: updates['dateRetraite'] ?? _userProfile!.dateRetraite,
           statut: updates['statut'] ?? _userProfile!.statut,
         );
       }
@@ -71,6 +87,7 @@ class UserProvider with ChangeNotifier {
     }
   }
 
+  //Effacer le profil
   void clearProfile() {
     _userProfile = null;
     notifyListeners();

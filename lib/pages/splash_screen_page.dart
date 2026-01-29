@@ -54,17 +54,12 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Icon(
-                Icons.military_tech,
-                size: 70,
-                color: Color(0xFF1B5E20),
+            Center(
+              child: Image.asset(
+                'assets/images/forces_arm__e.jpg',
+                width: 120,
+                height: 120,
+                fit: BoxFit.contain,
               ),
             ),
             const SizedBox(height: 24),
@@ -77,7 +72,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Gestion de Retraite Complémentaire',
+              'Système Endogène de Retraite par Capitalisation des Armées (SERCA)',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Colors.white70,
               ),

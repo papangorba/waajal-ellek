@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:waajal_elek/pages/register_page.dart';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
+import '../services/account_suggestion_service.dart';
 import 'home_page.dart';
 
 
@@ -15,38 +15,51 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _rememberMe = true;
+  List<String> _savedAccounts = [];
+
+  final FocusNode _usernameFocusNode = FocusNode();
+
+
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedAccounts();
+  }
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = context.read<AuthProvider>();
+
+    // Connexion avec username et password
     final success = await authProvider.signIn(
-      _emailController.text.trim(),
+      _usernameController.text.trim(),
       _passwordController.text,
       rememberMe: _rememberMe,
     );
 
     if (success && mounted) {
+      // Mettre à jour le UserProvider avec le profil récupéré
       final userProvider = context.read<UserProvider>();
-      await userProvider.fetchUserProfile(authProvider.userId!);
+      userProvider.setUserProfile(authProvider.userProfile);
 
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
-      }
+      // Naviguer vers la page d'accueil
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
     } else if (mounted) {
+      // Afficher l'erreur
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(authProvider.errorMessage ?? 'Erreur de connexion'),
@@ -55,6 +68,12 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
   }
+
+  Future<void> _loadSavedAccounts() async {
+    _savedAccounts = await AccountSuggestionService.getAccounts();
+    setState(() {});
+  }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -68,19 +87,15 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 48),
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Icon(
-                    Icons.military_tech,
-                    size: 60,
-                    color: Colors.white,
+                Center(
+                  child: Image.asset(
+                    'assets/images/forces_arm__e.jpg',
+                    width: 140,
+                    height: 140,
+                    fit: BoxFit.contain,
                   ),
                 ),
+
                 const SizedBox(height: 24),
                 Text(
                   'Waajal Ëlëk',
@@ -95,24 +110,69 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   textAlign: TextAlign.center,
                 ),
+
                 const SizedBox(height: 48),
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Veuillez entrer votre email';
+                RawAutocomplete<String>(
+                  textEditingController: _usernameController,
+                  focusNode: _usernameFocusNode,
+                  optionsBuilder: (TextEditingValue value) {
+                    if (value.text.isEmpty) {
+                      return const Iterable<String>.empty();
                     }
-                    if (!value.contains('@')) {
-                      return 'Email invalide';
-                    }
-                    return null;
+
+                    return _savedAccounts.where(
+                          (account) => account
+                          .toLowerCase()
+                          .contains(value.text.toLowerCase()),
+                    );
+                  },
+                  onSelected: (selection) {
+                    _usernameController.text = selection;
+                  },
+                  fieldViewBuilder:
+                      (context, controller, focusNode, onFieldSubmitted) {
+                    return TextFormField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      keyboardType: TextInputType.text,
+                      decoration: const InputDecoration(
+                        labelText: 'Matricule',
+                        prefixIcon: Icon(Icons.email_outlined),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Veuillez entrer votre matricule';
+                        }
+                        return null;
+                      },
+                    );
+                  },
+                  optionsViewBuilder:
+                      (context, onSelected, options) {
+                    return Align(
+                      alignment: Alignment.topLeft,
+                      child: Material(
+                        elevation: 4,
+                        borderRadius: BorderRadius.circular(12),
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          itemBuilder: (context, index) {
+                            final option = options.elementAt(index);
+                            return ListTile(
+                              leading:
+                              const Icon(Icons.account_circle_outlined),
+                              title: Text(option),
+                              onTap: () => onSelected(option),
+                            );
+                          },
+                        ),
+                      ),
+                    );
                   },
                 ),
+
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _passwordController,
@@ -185,23 +245,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           : const Text('Se connecter'),
                     );
                   },
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Pas encore de compte ? '),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const RegisterScreen(),
-                          ),
-                        );
-                      },
-                      child: const Text('S\'inscrire'),
-                    ),
-                  ],
                 ),
                 const SizedBox(height: 24),
                 Row(

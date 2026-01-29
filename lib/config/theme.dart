@@ -2,19 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static const Color primaryColor = Color(0xFF1B5E20);
-  static const Color secondaryColor = Color(0xFF2E7D32);
-  static const Color accentColor = Color(0xFFFFB300);
-  static const Color errorColor = Color(0xFFD32F2F);
-  static const Color successColor = Color(0xFF388E3C);
-  static const Color warningColor = Color(0xFFF57C00);
-  static const Color backgroundColor = Color(0xFFF5F5F5);
-  static const Color cardColor = Colors.white;
-  static const Color textPrimaryColor = Color(0xFF212121);
-  static const Color textSecondaryColor = Color(0xFF757575);
+  // 🎨 Couleurs BLEUES (charte portail)
+  static const Color primaryColor = Color(0xFF4381E2); // Bleu foncé
+  static const Color secondaryColor = Color(0xFF1565C0); // Bleu moyen
+  static const Color accentColor = Color(0xFFFFC107); // Jaune / Or
 
+  static const Color errorColor = Color(0xFFD32F2F);
+  static const Color successColor = Color(0xFF2E7D32);
+  static const Color warningColor = Color(0xFFF9A825);
+
+  static const Color backgroundColor = Color(0xFFF4F6F9);
+  static const Color cardColor = Colors.white;
+
+  static const Color textPrimaryColor = Color(0xFF1F2937);
+  static const Color textSecondaryColor = Color(0xFF6B7280);
+
+  //  Thème clair
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
+
     colorScheme: const ColorScheme.light(
       primary: primaryColor,
       secondary: secondaryColor,
@@ -24,7 +30,10 @@ class AppTheme {
       onSecondary: Colors.white,
       onSurface: textPrimaryColor,
     ),
+
     scaffoldBackgroundColor: backgroundColor,
+
+    //  AppBar
     appBarTheme: AppBarTheme(
       elevation: 0,
       backgroundColor: primaryColor,
@@ -36,66 +45,77 @@ class AppTheme {
         color: Colors.white,
       ),
     ),
+
+    //  Cards
     cardTheme: const CardThemeData(
-      elevation: 2,
+      elevation: 1.5,
+      color: cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
-      color: cardColor,
     ),
+
+    //  Boutons principaux
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
-        elevation: 2,
+        elevation: 1,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
         textStyle: GoogleFonts.inter(
-          fontSize: 16,
+          fontSize: 15,
           fontWeight: FontWeight.w600,
         ),
       ),
     ),
+
+    //  Boutons texte
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: primaryColor,
         textStyle: GoogleFonts.inter(
-          fontSize: 16,
+          fontSize: 15,
           fontWeight: FontWeight.w600,
         ),
       ),
     ),
+
+    //  Champs de saisie
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Colors.grey),
-      ),
-      enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(color: Colors.grey.shade300),
       ),
+
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: primaryColor, width: 2),
       ),
+
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: errorColor),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+
       labelStyle: GoogleFonts.inter(
         fontSize: 14,
         color: textSecondaryColor,
       ),
+
       hintStyle: GoogleFonts.inter(
         fontSize: 14,
         color: textSecondaryColor,
       ),
     ),
+
+    // Typographie
     textTheme: TextTheme(
       displayLarge: GoogleFonts.inter(
         fontSize: 32,
@@ -122,28 +142,19 @@ class AppTheme {
         fontWeight: FontWeight.w600,
         color: textPrimaryColor,
       ),
-      titleLarge: GoogleFonts.inter(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: textPrimaryColor,
-      ),
       bodyLarge: GoogleFonts.inter(
         fontSize: 16,
-        fontWeight: FontWeight.normal,
-        color: textPrimaryColor,
         height: 1.5,
+        color: textPrimaryColor,
       ),
       bodyMedium: GoogleFonts.inter(
         fontSize: 14,
-        fontWeight: FontWeight.normal,
-        color: textPrimaryColor,
         height: 1.5,
+        color: textPrimaryColor,
       ),
       bodySmall: GoogleFonts.inter(
         fontSize: 12,
-        fontWeight: FontWeight.normal,
         color: textSecondaryColor,
-        height: 1.5,
       ),
     ),
   );

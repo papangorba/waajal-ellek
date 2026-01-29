@@ -8,7 +8,6 @@ import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import 'cotisation_page.dart';
 import 'dashboard_page.dart';
-import 'document_page.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -21,9 +20,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
+  int _notificationCount = 5;
+
   final List<Widget> _screens = const [
     DashboardScreen(),
     CotisationsScreen(),
+    //DocumentsScreen(),
     PensionsScreen(),
     ProfileScreen(),
   ];
@@ -37,9 +39,40 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Waajal Ëlëk'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {},
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined),
+                onPressed: () {
+                  // Action pour voir les notifications
+                },
+              ),
+              if (_notificationCount > 0)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      '$_notificationCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.help_outline),
@@ -111,17 +144,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.folder),
-              title: const Text('Documents'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const DocumentsScreen()),
-                );
-              },
-            ),
-            ListTile(
               leading: const Icon(Icons.settings),
               title: const Text('Paramètres'),
               onTap: () {
@@ -163,6 +185,10 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.account_balance_wallet),
             label: 'Cotisations',
           ),
+          //BottomNavigationBarItem(
+           // icon: Icon(Icons.account_balance_wallet),
+           // label: 'Document',
+          //),
           BottomNavigationBarItem(
             icon: Icon(Icons.payments),
             label: 'Pensions',

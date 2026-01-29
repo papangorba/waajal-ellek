@@ -5,6 +5,12 @@ class StorageService {
   static StorageService? _instance;
   static SharedPreferences? _preferences;
 
+  // Clés pour le stockage
+  static const String _accessTokenKey = 'access_token';
+  static const String _refreshTokenKey = 'refresh_token';
+  static const String _userProfileKey = 'user_profile';
+  static const String _isAuthenticatedKey = 'is_authenticated';
+
   StorageService._();
 
   static Future<StorageService> getInstance() async {
@@ -13,6 +19,40 @@ class StorageService {
     return _instance!;
   }
 
+  //Gestion des tokens
+  //Sauvegarder l'access token
+  Future<void> saveAccessToken(String token) async {
+    await _preferences?.setString(_accessTokenKey, token);
+  }
+
+  //Récupérer l'access token
+  String? getAccessToken() {
+    return _preferences?.getString(_accessTokenKey);
+  }
+
+  //Sauvegarder le refresh token
+  Future<void> saveRefreshToken(String token) async {
+    await _preferences?.setString(_refreshTokenKey, token);
+  }
+
+  //Récupérer le refresh token
+  String? getRefreshToken() {
+    return _preferences?.getString(_refreshTokenKey);
+  }
+
+  //Supprimer les tokens
+  Future<void> clearTokens() async {
+    await _preferences?.remove(_accessTokenKey);
+    await _preferences?.remove(_refreshTokenKey);
+  }
+
+  //Vérifier si un access token existe
+  bool hasAccessToken() {
+    final token = _preferences?.getString(_accessTokenKey);
+    return token != null && token.isNotEmpty;
+  }
+
+  //Methode generale
   Future<void> saveString(String key, String value) async {
     await _preferences?.setString(key, value);
   }

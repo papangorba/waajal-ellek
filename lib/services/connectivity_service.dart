@@ -12,13 +12,13 @@ class ConnectivityService with ChangeNotifier {
   ConnectivityService() {
     _initConnectivity();
     _connectivitySubscription =
-        _connectivity.onConnectivityChanged.listen(_updateConnectionStatus as void Function(ConnectivityResult event)?) as StreamSubscription<List<ConnectivityResult>>?;
+        _connectivity.onConnectivityChanged.listen(_updateConnectionStatus);
   }
 
   Future<void> _initConnectivity() async {
     try {
-      final result = await _connectivity.checkConnectivity();
-      _updateConnectionStatus([result]);
+      final results = await _connectivity.checkConnectivity();
+      _updateConnectionStatus(results);
     } catch (e) {
       _isConnected = false;
       notifyListeners();
@@ -27,9 +27,11 @@ class ConnectivityService with ChangeNotifier {
 
   void _updateConnectionStatus(List<ConnectivityResult> results) {
     final wasConnected = _isConnected;
+
     _isConnected = results.isNotEmpty &&
-        results.any((result) =>
-        result != ConnectivityResult.none);
+        results.any((result) => result != ConnectivityResult.none);
+
+    print('Connexion: ${_isConnected ? "En ligne" : "Hors ligne"}');
 
     if (wasConnected != _isConnected) {
       notifyListeners();
@@ -38,8 +40,9 @@ class ConnectivityService with ChangeNotifier {
 
   Future<bool> checkConnection() async {
     try {
-      final result = await _connectivity.checkConnectivity();
-      return result != ConnectivityResult.none;
+      final results = await _connectivity.checkConnectivity();
+      return results.isNotEmpty &&
+          results.any((result) => result != ConnectivityResult.none);
     } catch (e) {
       return false;
     }

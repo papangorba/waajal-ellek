@@ -1,7 +1,7 @@
 import 'package:intl/intl.dart';
 
 class CurrencyFormatter {
-  static String format(double amount, {String symbol = 'FCFA', String locale = 'fr_FR'}) {
+  static String format(double amount, {String symbol = 'Fcfa', String locale = 'fr_FR'}) {
     final formatter = NumberFormat.currency(
       locale: locale,
       symbol: '',

@@ -1,49 +1,28 @@
-class CotisationModel {
-  final String id;
-  final String userId;
-  final DateTime dateCotisation;
+class Cotisation {
+  final int id;
+  final int adherantId;
+  final String dateVersement;
   final double montant;
-  final int pointsAcquis;
   final String statut;
-  final String? reference;
   final String typeCotisation;
 
-  CotisationModel({
+  Cotisation({
     required this.id,
-    required this.userId,
-    required this.dateCotisation,
+    required this.adherantId,
+    required this.dateVersement,
     required this.montant,
-    required this.pointsAcquis,
     required this.statut,
-    this.reference,
     required this.typeCotisation,
   });
 
-  factory CotisationModel.fromJson(Map<String, dynamic> json) {
-    return CotisationModel(
-      id: json['id'] as String,
-      userId: json['user_id'] as String,
-      dateCotisation: DateTime.parse(json['date_cotisation'] as String),
+  factory Cotisation.fromJson(Map<String, dynamic> json) {
+    return Cotisation(
+      id: json['id'],
+      adherantId: json['adherantId'],
+      dateVersement: json['dateVersement'],
       montant: (json['montant'] as num).toDouble(),
-      pointsAcquis: json['points_acquis'] as int,
-      statut: json['statut'] as String,
-      reference: json['reference'] as String?,
-      typeCotisation: json['type_cotisation'] as String,
+      statut: json['statut'],
+      typeCotisation: json['typeCotisation'],
     );
   }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'user_id': userId,
-      'date_cotisation': dateCotisation.toIso8601String(),
-      'montant': montant,
-      'points_acquis': pointsAcquis,
-      'statut': statut,
-      'reference': reference,
-      'type_cotisation': typeCotisation,
-    };
-  }
-
-  bool get isPaid => statut == 'paye';
 }

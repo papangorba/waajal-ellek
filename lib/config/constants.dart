@@ -62,3 +62,8 @@ class StorageKeys {
   static const String isFirstLaunch = 'is_first_launch';
   static const String lastSyncDate = 'last_sync_date';
 }
+class SupportConstants {
+  static const String phoneNumber = '+221772995725'; // ton numéro
+  static const String whatsappNumber = '+221772995725'; // format international sans espace
+}
+

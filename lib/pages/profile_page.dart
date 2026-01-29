@@ -1,11 +1,119 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../config/constants.dart';
 import '../utils/date_formatter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-class ProfileScreen extends StatelessWidget {
+
+
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+
+  @override
+  void initState() {
+    super.initState();
+    // affiche le profil local(sha...)
+    _loadLocalProfile();
+    // depuis api
+    _refreshProfileFromApi();
+  }
+
+  void _loadLocalProfile() {
+    final authProvider = context.read<AuthProvider>();
+    final userProvider = context.read<UserProvider>();
+
+    if (authProvider.userProfile != null) {
+      userProvider.setUserProfile(authProvider.userProfile);
+    }
+  }
+
+  void _refreshProfileFromApi() async {
+    final userProvider = context.read<UserProvider>();
+    // si on veux appeler le backend pour rafraîchir les données
+    // par exemple userProvider.fetchUserProfile();
+  }
+
+
+
+
+  void _callSupport() async {
+    final uri = Uri.parse('tel:${SupportConstants.phoneNumber}');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  void _whatsappSupport() async {
+    final uri = Uri.parse(
+      'https://wa.me/${SupportConstants.whatsappNumber}?text=Bonjour, j’ai besoin d’assistance.',
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  void _showSupportOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Aide et support',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+
+              ListTile(
+                leading: const Icon(Icons.phone, color: Colors.green),
+                title: const Text('Appeler le support'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _callSupport();
+                },
+              ),
+
+              ListTile(
+                leading: const FaIcon(
+                  FontAwesomeIcons.whatsapp,
+                  color: Color(0xFF25D366),
+                ),
+                title: const Text('Contacter via WhatsApp'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _whatsappSupport();
+                },
+              ),
+
+
+              ListTile(
+                leading: const Icon(Icons.close, color: Colors.grey),
+                title: const Text('Annuler'),
+                onTap: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -83,19 +191,19 @@ class ProfileScreen extends StatelessWidget {
                     _InfoTile(
                       icon: Icons.cake,
                       label: 'Date de naissance',
-                      value: DateFormatter.format(user.dateNaissance!),
+                      value: user.dateNaissance! ,
                     ),
                   if (user.dateEngagement != null)
                     _InfoTile(
                       icon: Icons.work,
                       label: 'Date d\'engagement',
-                      value: DateFormatter.format(user.dateEngagement!),
+                      value: user.dateEngagement! ,
                     ),
                   if (user.dateRetraite != null)
                     _InfoTile(
                       icon: Icons.event,
                       label: 'Date de retraite',
-                      value: DateFormatter.format(user.dateRetraite!),
+                      value: user.dateRetraite!,
                     ),
                 ],
               ),
@@ -105,12 +213,12 @@ class ProfileScreen extends StatelessWidget {
           Card(
             child: Column(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.edit),
-                  title: const Text('Modifier le profil'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
-                ),
+                //ListTile(
+                //  leading: const Icon(Icons.edit),
+                //  title: const Text('Modifier le profil'),
+                //  trailing: const Icon(Icons.chevron_right),
+                //  onTap: () {},
+               // ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.lock),
@@ -130,7 +238,7 @@ class ProfileScreen extends StatelessWidget {
                   leading: const Icon(Icons.help),
                   title: const Text('Aide et support'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                  onTap: () => _showSupportOptions(context),
                 ),
               ],
             ),

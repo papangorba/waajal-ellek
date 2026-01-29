@@ -4,6 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:waajal_elek/pages/splash_screen_page.dart';
+import 'package:waajal_elek/services/connectivity_service.dart';
 
 import 'config/theme.dart';
 import 'providers/auth_provider.dart';
@@ -14,10 +15,7 @@ void main() async {
 
   await dotenv.load(fileName: '.env');
 
-  await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL'] ?? '',
-    anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
-  );
+
 
   await initializeDateFormatting('fr_FR', null);
 
@@ -31,8 +29,10 @@ class WaajalElekApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ConnectivityService()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+
       ],
       child: MaterialApp(
         title: 'Waajal Ëlëk',

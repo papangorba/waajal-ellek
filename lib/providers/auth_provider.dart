@@ -1,76 +1,99 @@
 import 'package:flutter/foundation.dart';
-import '../services/data_service.dart';
+import '../models/auth_user_model.dart';
+import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 
 class AuthProvider with ChangeNotifier {
-  final DataService _dataService = DataService();
+  final AuthService _authService = AuthService();
   StorageService? _storageService;
-  Map<String, dynamic>? _currentUser;
+
+  String? _accessToken;
+  String? _refreshToken;
+  UserProfile? _userProfile;
   bool _isLoading = false;
   String? _errorMessage;
 
-  static const String _userKey = 'current_user';
-  static const String _isAuthenticatedKey = 'is_authenticated';
-
-  Map<String, dynamic>? get currentUser => _currentUser;
+  String? get accessToken => _accessToken;
+  String? get refreshToken => _refreshToken;
+  UserProfile? get userProfile => _userProfile;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  bool get isAuthenticated => _currentUser != null;
-  String? get userId => _currentUser?['id'];
+  bool get isAuthenticated => _accessToken != null && _userProfile != null;
+  String? get userId => _userProfile?.id;
 
   Future<void> _initStorage() async {
     _storageService ??= await StorageService.getInstance();
   }
 
+  //Restaurer la session  localement
   Future<void> restoreSession() async {
     await _initStorage();
 
-    final isAuth = _storageService?.getBool(_isAuthenticatedKey) ?? false;
-    if (isAuth) {
-      final userData = _storageService?.getJson(_userKey);
-      if (userData != null) {
-        _currentUser = userData;
+    _accessToken = _storageService?.getAccessToken();
+    _refreshToken = _storageService?.getRefreshToken();
+
+    if (_accessToken != null) {
+      final userProfileData = _storageService?.getJson('user_profile');
+      if (userProfileData != null) {
+        _userProfile = UserProfile.fromJson(userProfileData);
         notifyListeners();
+
+        print('Session restauree pour: ${_userProfile?.nomComplet}');
       }
     }
   }
 
-  Future<void> _saveSession() async {
+  //Sauvegarder la session
+  Future<void> _saveSession(AuthResponse authResponse) async {
     await _initStorage();
 
-    if (_currentUser != null) {
-      await _storageService?.saveBool(_isAuthenticatedKey, true);
-      await _storageService?.saveJson(_userKey, _currentUser!);
-    }
+    // Sauvegarde du token
+    await _storageService?.saveAccessToken(authResponse.accessToken);
+    await _storageService?.saveRefreshToken(authResponse.refreshToken);
+    // Sauvegarder le profil utilisateur
+    await _storageService?.saveJson('user_profile', authResponse.userProfile.toJson());
+    await _storageService?.saveBool('is_authenticated', true);
+    print('Session sauvegardée');
   }
 
+  //Effacer la session
   Future<void> _clearSession() async {
     await _initStorage();
-
-    await _storageService?.remove(_userKey);
-    await _storageService?.remove(_isAuthenticatedKey);
+    await _storageService?.clearTokens();
+    await _storageService?.remove('user_profile');
+    await _storageService?.remove('is_authenticated');
+    print('Session effacée');
   }
-
-  Future<bool> signIn(String email, String password, {bool rememberMe = true}) async {
+  //Connexion
+  Future<bool> signIn(String username, String password, {bool rememberMe = true}) async {
     try {
       _isLoading = true;
       _errorMessage = null;
       notifyListeners();
 
-      final user = await _dataService.signIn(email, password);
+      print('Tentative de connexion pour: $username');
 
-      if (user != null) {
-        _currentUser = user;
+      final authResponse = await _authService.login(username, password);
+      if (authResponse != null && authResponse.status == 'SUCCESS') {
+        _accessToken = authResponse.accessToken;
+        _refreshToken = authResponse.refreshToken;
+        _userProfile = authResponse.userProfile;
+
         if (rememberMe) {
-          await _saveSession();
+          await _saveSession(authResponse);
         }
+
         _isLoading = false;
         notifyListeners();
+
+        print('Connexion reussie: ${_userProfile?.nomComplet}');
         return true;
       } else {
-        _errorMessage = 'Email ou mot de passe incorrect.';
+        _errorMessage = authResponse?.message ?? 'Email ou mot de passe incorrect.';
         _isLoading = false;
         notifyListeners();
+
+        print('Echec de connexion: $_errorMessage');
         return false;
       }
     } catch (e) {
@@ -80,45 +103,66 @@ class AuthProvider with ChangeNotifier {
       return false;
     }
   }
+  //Rafraîchir le token
+  Future<bool> refreshAccessToken() async {
+    if (_refreshToken == null) {
+      return false;
+    }
 
-  Future<bool> signUp(String email, String password, Map<String, dynamic> userData) async {
     try {
-      _isLoading = true;
-      _errorMessage = null;
-      notifyListeners();
+      final authResponse = await _authService.refreshToken(_refreshToken!);
 
-      _currentUser = await _dataService.signUp(email, password, userData);
-      await _saveSession();
-      _isLoading = false;
-      notifyListeners();
+      if (authResponse != null && authResponse.status == 'SUCCESS') {
+        _accessToken = authResponse.accessToken;
+        _refreshToken = authResponse.refreshToken;
+        _userProfile = authResponse.userProfile;
 
-      return true;
+        await _saveSession(authResponse);
+        notifyListeners();
+
+        print('Token rafraîchi avec succes');
+        return true;
+      } else {
+        await signOut();
+        return false;
+      }
     } catch (e) {
-      _errorMessage = 'Une erreur est survenue. Veuillez réessayer.';
-      _isLoading = false;
-      notifyListeners();
+      await signOut();
       return false;
     }
   }
 
+  //Deconnexion
   Future<void> signOut() async {
     try {
-      _dataService.signOut();
-      _currentUser = null;
+      if (_accessToken != null) {
+        await _authService.logout(_accessToken!);
+      }
+
+      _accessToken = null;
+      _refreshToken = null;
+      _userProfile = null;
+
       await _clearSession();
       notifyListeners();
+
+      print('Deconnexion réussie');
     } catch (e) {
       _errorMessage = 'Erreur lors de la déconnexion.';
       notifyListeners();
+
+      print('Erreur lors de la déconnexion: $e');
     }
   }
 
+  //Réinitialiser le mot de passe
   Future<bool> resetPassword(String email) async {
     try {
       _isLoading = true;
       _errorMessage = null;
       notifyListeners();
 
+      // TODO: Implémenter avec votre endpoint backend
       await Future.delayed(const Duration(milliseconds: 500));
 
       _isLoading = false;
@@ -133,6 +177,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  //Effacer les erreurs
   void clearError() {
     _errorMessage = null;
     notifyListeners();
