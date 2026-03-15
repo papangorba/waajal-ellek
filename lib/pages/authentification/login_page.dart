@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../services/account_suggestion_service.dart';
+import 'first_login_page.dart';
 import 'home_page.dart';
 
 
@@ -86,6 +87,27 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.verified_user_outlined, size: 18),
+                    label: const Text("Première connexion"),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const FirstLoginPage(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
                 const SizedBox(height: 48),
                 Center(
                   child: Image.asset(
