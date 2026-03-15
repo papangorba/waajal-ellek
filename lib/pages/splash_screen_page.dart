@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import 'home_page.dart';
-import 'login_page.dart';
+import 'authentification/login_page.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -22,6 +22,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _checkAuthStatus() async {
     final authProvider = context.read<AuthProvider>();
 
+    // Restaurer la session
     await authProvider.restoreSession();
 
     await Future.delayed(const Duration(seconds: 2));
@@ -30,21 +31,30 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (authProvider.isAuthenticated) {
       final userProvider = context.read<UserProvider>();
-      await userProvider.fetchUserProfile(authProvider.userId!);
 
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+      // conversion userId -> String
+      final userId = authProvider.userId?.toString();
+
+      if (userId != null) {
+        await userProvider.fetchUserProfile(userId);
       }
+
+      if (!mounted) return;
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const HomeScreen(),
+        ),
+      );
     } else {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
-      }
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const LoginScreen(),
+        ),
+      );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

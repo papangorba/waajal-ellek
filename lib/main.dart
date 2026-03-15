@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:waajal_elek/pages/splash_screen_page.dart';
 import 'package:waajal_elek/services/connectivity_service.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'config/theme.dart';
 import 'providers/auth_provider.dart';
@@ -38,6 +38,20 @@ class WaajalElekApp extends StatelessWidget {
         title: 'Waajal Ëlëk',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
+
+        locale: const Locale('fr', 'FR'),
+
+        supportedLocales: const [
+          Locale('fr', 'FR'),
+        ],
+
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+
+
         home: const SplashScreen(),
       ),
     );

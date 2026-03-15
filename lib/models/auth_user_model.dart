@@ -35,7 +35,8 @@ class AuthResponse {
 }
 
 class UserProfile {
-  final String id;
+  final int? adherantId;
+  final int? userId;
   final String matricule;
   final String nom;
   final String prenom;
@@ -50,7 +51,8 @@ class UserProfile {
   final String? updatedAt;
 
   UserProfile({
-    required this.id,
+    this.adherantId,
+    this.userId,
     required this.matricule,
     required this.nom,
     required this.prenom,
@@ -67,7 +69,8 @@ class UserProfile {
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
-      id: json['id'] as String,
+      adherantId: json['adherantId'],
+      userId: json['userId'],
       matricule: json['matricule'] as String,
       nom: json['nom'] as String,
       prenom: json['prenom'] as String,
@@ -85,7 +88,8 @@ class UserProfile {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'adherantId': adherantId,
+      'userId': userId,
       'matricule': matricule,
       'nom': nom,
       'prenom': prenom,

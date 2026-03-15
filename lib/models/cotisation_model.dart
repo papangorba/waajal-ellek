@@ -1,17 +1,17 @@
 class Cotisation {
   final int id;
   final int adherantId;
-  final String dateVersement;
+  final String? dateVersement;
   final double montant;
-  final String statut;
+  final String? statut;
   final String typeCotisation;
 
   Cotisation({
     required this.id,
     required this.adherantId,
-    required this.dateVersement,
+    this.dateVersement,
     required this.montant,
-    required this.statut,
+    this.statut,
     required this.typeCotisation,
   });
 

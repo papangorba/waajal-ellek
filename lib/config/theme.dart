@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // 🎨 Couleurs BLEUES (charte portail)
+  //Couleurs BLEUES (charte portail)
   static const Color primaryColor = Color(0xFF4381E2); // Bleu foncé
   static const Color secondaryColor = Color(0xFF1565C0); // Bleu moyen
   static const Color accentColor = Color(0xFFFFC107); // Jaune / Or

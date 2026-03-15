@@ -16,8 +16,6 @@ class CotisationsScreen extends StatefulWidget {
 }
 
 class _CotisationsScreenState extends State<CotisationsScreen> {
-  final CotisationService _apiService = CotisationService();
-
   List<Cotisation> _cotisations = [];
   bool _isLoading = true;
   String _filterMonth = 'Tous';
@@ -37,9 +35,9 @@ class _CotisationsScreenState extends State<CotisationsScreen> {
     DateTime now = DateTime.now();
     for (int i = 1; i <= 3; i++) {
       DateTime month = DateTime(now.year, now.month - i, 1);
-      _monthFilters.add(DateFormat('MMMM yyyy').format(month));
+      _monthFilters.add(DateFormat('MMMM yyyy', 'fr_FR').format(month));
     }
-    _monthFilters.add('Autres mois'); // sélection mois dqns historique
+    _monthFilters.add('Autres mois');
   }
 
   Future<void> _loadCotisations() async {
@@ -49,56 +47,76 @@ class _CotisationsScreenState extends State<CotisationsScreen> {
     });
 
     try {
-      // Récupérer le token depuis le Provider
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final connectivityService = Provider.of<ConnectivityService>(context, listen: false);
+      final connectivityService =
+      Provider.of<ConnectivityService>(context, listen: false);
+
       final token = authProvider.accessToken;
       final userId = authProvider.userId;
+      final adherantId = authProvider.adherantId;
 
-      if (token == null || userId == null) {
-        throw Exception("Token manquant ou userid. Veuillez vous reconnecter.");
+      if (token == null || userId == null || adherantId == null) {
+        throw Exception("Token manquant ou utilisateur non connecté.");
       }
+
       _isOffline = !await connectivityService.checkConnection();
 
-      // Appel de l'API avec le token
+
       final allCotisations = await CotisationService.getCotisations(
         accessToken: token,
-        userId: userId,
-        connectivityService: connectivityService,);
+        userId: userId.toString(),
+        adherantId: adherantId,
+        connectivityService: connectivityService,
+      );
 
-      final paidCotisations = allCotisations
-          .where((c) => c.statut.toUpperCase() == 'PAYE')
-          .toList();
+      //Ce que l'API retourne
+      print('Total cotisations reçues: ${allCotisations.length}');
+      for (var c in allCotisations) {
+        print('  → id:${c.id} | adherantId:${c.adherantId} | statut:${c.statut} | date:${c.dateVersement}');
+      }
 
-      if (_filterMonth == 'Tous') {
-        _cotisations = paidCotisations;
-      } else if (_filterMonth == 'Autres mois') {
-        _cotisations = [];
-      } else {
-        _cotisations = paidCotisations.where((c) {
+      //Après filtre adherantId
+      final userCotisations =
+      allCotisations.where((c) => c.adherantId == adherantId).toList();
+      print('Après filtre adherantId ($adherantId): ${userCotisations.length}');
+
+      //Après filtre statut
+      final filtered = userCotisations.where((c) {
+        if (c.statut == null) return false;
+        final statut = c.statut!.toLowerCase().replaceAll('é', 'e').trim();
+        print('  statut brut: "${c.statut}" → normalisé: "$statut"');
+        return statut == 'paye' || statut == 'en attente';
+      }).toList();
+      print('Après filtre statut: ${filtered.length}');
+
+      _cotisations = filtered;
+
+      // filtre mois (inchangé)
+      if (_filterMonth != 'Tous' && _filterMonth != 'Autres mois') {
+        _cotisations = _cotisations.where((c) {
+          if (c.dateVersement == null) return false;
           try {
-            final cDate = DateTime.parse(c.dateVersement);
+            final cDate = DateTime.parse(c.dateVersement!);
             return DateFormat('MMMM yyyy', 'fr_FR').format(cDate) == _filterMonth;
           } catch (e) {
-            print('Erreur parsing date: ${c.dateVersement}');
             return false;
           }
         }).toList();
+        print('Après filtre mois ($_filterMonth): ${_cotisations.length}');
       }
 
       _cotisations.sort((a, b) {
-        try {
-          return DateTime.parse(b.dateVersement)
-              .compareTo(DateTime.parse(a.dateVersement));
-        } catch (e) {
-          return 0;
-        }
+        final dateA = a.dateVersement != null ? DateTime.tryParse(a.dateVersement!) : null;
+        final dateB = b.dateVersement != null ? DateTime.tryParse(b.dateVersement!) : null;
+        if (dateA == null && dateB == null) return 0;
+        if (dateA == null) return 1;
+        if (dateB == null) return -1;
+        return dateB.compareTo(dateA);
       });
 
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       print('Erreur: $e');
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -114,9 +132,7 @@ class _CotisationsScreenState extends State<CotisationsScreen> {
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -127,7 +143,7 @@ class _CotisationsScreenState extends State<CotisationsScreen> {
     List<String> oldMonths = [];
     DateTime date = threeMonthsAgo.subtract(const Duration(days: 30));
     while (date.year >= 2000) {
-      oldMonths.add(DateFormat('MMMM yyyy').format(date));
+      oldMonths.add(DateFormat('MMMM yyyy', 'fr_FR').format(date));
       date = DateTime(date.year, date.month - 1, 1);
     }
 
@@ -168,7 +184,7 @@ class _CotisationsScreenState extends State<CotisationsScreen> {
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text(
-                    'Mode hors ligne ',
+                    'Mode hors ligne',
                     style: TextStyle(color: Colors.orange, fontSize: 13),
                   ),
                 ),
@@ -179,6 +195,7 @@ class _CotisationsScreenState extends State<CotisationsScreen> {
               ],
             ),
           ),
+
         // FILTRES
         Container(
           padding: const EdgeInsets.all(16),
@@ -187,7 +204,6 @@ class _CotisationsScreenState extends State<CotisationsScreen> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: _monthFilters.map((label) {
-                bool isSelected = _filterMonth == label;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: _FilterChip(
@@ -219,7 +235,8 @@ class _CotisationsScreenState extends State<CotisationsScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const Icon(Icons.error_outline,
+                      size: 64, color: Colors.red),
                   const SizedBox(height: 16),
                   Text(
                     _errorMessage!,
@@ -241,7 +258,8 @@ class _CotisationsScreenState extends State<CotisationsScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.inbox, size: 64, color: Colors.grey[400]),
+                Icon(Icons.inbox,
+                    size: 64, color: Colors.grey[400]),
                 const SizedBox(height: 16),
                 Text(
                   _filterMonth == 'Tous'
@@ -260,12 +278,28 @@ class _CotisationsScreenState extends State<CotisationsScreen> {
               itemBuilder: (_, i) {
                 final c = _cotisations[i];
                 DateTime? date;
-
-                try {
-                  date = DateTime.parse(c.dateVersement);
-                } catch (e) {
-                  print('Erreur parsing date: ${c.dateVersement}');
+                if (c.dateVersement != null) {
+                  try {
+                    date = DateTime.parse(c.dateVersement!);
+                  } catch (e) {
+                    print(
+                        'Erreur chargement date: ${c.dateVersement}');
+                  }
                 }
+
+                final statutNorm = c.statut
+                    ?.toLowerCase()
+                    .replaceAll('é', 'e')
+                    .trim() ??
+                    '';
+                final isPaid = statutNorm == 'paye';
+                final statusColor =
+                isPaid ? Colors.green : Colors.orange;
+                final statusBgColor = isPaid
+                    ? Colors.green[100]
+                    : Colors.orange[100];
+                final statusLabel =
+                isPaid ? 'PAYÉ' : 'EN ATTENTE';
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -276,12 +310,14 @@ class _CotisationsScreenState extends State<CotisationsScreen> {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: Colors.green[50],
+                        color: statusColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(
-                        Icons.check_circle,
-                        color: Colors.green,
+                      child: Icon(
+                        isPaid
+                            ? Icons.check_circle
+                            : Icons.hourglass_empty,
+                        color: statusColor,
                         size: 32,
                       ),
                     ),
@@ -297,9 +333,10 @@ class _CotisationsScreenState extends State<CotisationsScreen> {
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         date != null
-                            ? 'Mois: ${DateFormat('dd MMMM yyyy', 'fr_FR').format(date)} • Type: ${c.typeCotisation}'
-                            : c.typeCotisation,
-                        style: TextStyle(color: Colors.grey[600]),
+                            ? 'Date: ${DateFormat('dd MMMM yyyy', 'fr_FR').format(date)} • Type: ${c.typeCotisation}'
+                            : 'Type: ${c.typeCotisation}',
+                        style:
+                        TextStyle(color: Colors.grey[600]),
                       ),
                     ),
                     trailing: Container(
@@ -308,15 +345,15 @@ class _CotisationsScreenState extends State<CotisationsScreen> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.green[100],
+                        color: statusBgColor,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        'PAYÉ',
+                      child: Text(
+                        statusLabel,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: Colors.green,
+                          color: statusColor,
                         ),
                       ),
                     ),

@@ -1,28 +1,27 @@
 class PensionModel {
   final int id;
   final int adherantId;
-  final String dateVersement;
+  final String? dateVersement;
   final double montant;
-  final String statut;
+  final String? statut;
   final String typePension;
 
   PensionModel({
     required this.id,
     required this.adherantId,
-    required this.dateVersement,
+    this.dateVersement,
     required this.montant,
-    required this.statut,
+    this.statut,
     required this.typePension,
   });
 
-  //   Factory depuis le JSON du backend
   factory PensionModel.fromJson(Map<String, dynamic> json) {
     return PensionModel(
       id: json['id'] as int,
       adherantId: json['adherantId'] as int,
-      dateVersement: json['dateVersement'] as String,
+      dateVersement: json['dateVersement'] as String?,
       montant: (json['montant'] as num).toDouble(),
-      statut: json['statut'] as String,
+      statut: json['statut'] as String?,
       typePension: json['typePension'] as String,
     );
   }
@@ -38,11 +37,16 @@ class PensionModel {
     };
   }
 
-  bool get isPaid => statut.toUpperCase() == 'PAYE';
+  bool get isPaid {
+    if (statut == null) return false;
+    final s = statut!.toLowerCase().replaceAll('é', 'e').trim();
+    return s == 'paye' || s == 'actif';
+  }
 
   DateTime get date {
+    if (dateVersement == null || dateVersement!.isEmpty) return DateTime.now();
     try {
-      return DateTime.parse(dateVersement);
+      return DateTime.parse(dateVersement!);
     } catch (e) {
       return DateTime.now();
     }

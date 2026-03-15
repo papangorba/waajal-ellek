@@ -53,9 +53,10 @@ class _PensionsScreenState extends State<PensionsScreen> {
       final connectivityService = Provider.of<ConnectivityService>(context, listen: false);
 
       final token = authProvider.accessToken;
-      final userId = authProvider.userId;
+      final userId = authProvider.userId?.toString();
+      final adherantId = authProvider.adherantId;
 
-      if (token == null || userId == null) {
+      if (token == null || userId == null || adherantId == null) {
         throw Exception("Utilisateur non authentifié");
       }
 
@@ -65,6 +66,7 @@ class _PensionsScreenState extends State<PensionsScreen> {
       final allPensions = await PensionService.getPensions(
         accessToken: token,
         userId: userId,
+        adherantId: adherantId,
         connectivityService: connectivityService,
       );
 

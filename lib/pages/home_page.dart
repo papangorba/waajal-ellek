@@ -31,6 +31,27 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    //  FIX : Synchroniser UserProvider dès l'ouverture de HomeScreen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncUserProvider();
+    });
+  }
+
+  /// Alimente UserProvider depuis AuthProvider si ce n'est pas déjà fait
+  void _syncUserProvider() {
+    final authProvider = context.read<AuthProvider>();
+    final userProvider = context.read<UserProvider>();
+
+    if (userProvider.userProfile == null && authProvider.userProfile != null) {
+      userProvider.setUserProfile(authProvider.userProfile);
+    }
+  }
+
+
+
+  @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
     final user = userProvider.userProfile;

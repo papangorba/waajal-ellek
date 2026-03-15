@@ -11,28 +11,28 @@ class PensionService {
   static Future<List<PensionModel>> getPensions({
     required String accessToken,
     required String userId,
+    required int adherantId,
     required ConnectivityService connectivityService,
   }) async {
-    // Vérifier la connexion
     final isConnected = await connectivityService.checkConnection();
 
     if (isConnected) {
-      // Mode en ligne : Appel l'API
       try {
         final pensions = await _fetchFromAPI(accessToken);
 
-        // Sauvegarder en local
-        await _dbHelper.savePensions(userId, pensions);
-        await _dbHelper.updateSyncMetadata('pensions_sync', DateTime.now());
-
-        print('Pensions chargées depuis API');
+        try {
+          await _dbHelper.savePensions(userId, adherantId, pensions);
+          await _dbHelper.updateSyncMetadata('pensions_sync', DateTime.now());
+        } catch (dbError) {
+          print('Erreur sauvegarde pensions: $dbError');
+        }
         return pensions;
+
       } catch (e) {
         return await _dbHelper.getPensions(userId);
       }
     } else {
-      // Mode hors ligne : Charger depuis SQLite
-      print('Mode hors ligne - Chargement depuis cache');
+      print('Mode hors ligne - Chargement pensions localement');
       final localData = await _dbHelper.getPensions(userId);
 
       if (localData.isEmpty) {
@@ -48,7 +48,7 @@ class PensionService {
 
     try {
       final url = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.pensions}');
-      print('Requête API: $url');
+      print('Requête API pensions: $url');
 
       final response = await client.get(
         url,
@@ -56,8 +56,22 @@ class PensionService {
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
-        final List data = json.decode(response.body);
-        return data.map((e) => PensionModel.fromJson(e)).toList();
+        final decoded = json.decode(response.body);
+
+        List rawList;
+        if (decoded is List) {
+          rawList = decoded;
+        } else if (decoded is Map && decoded.containsKey('data')) {
+          rawList = decoded['data'] as List;
+        } else if (decoded is Map && decoded.containsKey('content')) {
+          rawList = decoded['content'] as List;
+        } else {
+          rawList = [];
+        }
+
+        print('Nombre pensions parsées: ${rawList.length}');
+        return rawList.map((e) => PensionModel.fromJson(e)).toList();
+
       } else if (response.statusCode == 401) {
         throw Exception("Session expirée");
       } else {

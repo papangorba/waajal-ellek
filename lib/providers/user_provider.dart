@@ -15,6 +15,7 @@ class UserProvider with ChangeNotifier {
     notifyListeners();
   }
 
+
   Future<void> fetchUserProfile(String userId) async {
 
     // Si on a un endpoint /api/user/profile/{userId}
@@ -49,7 +50,7 @@ class UserProvider with ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      // TODO: l'appel api pour mettre à jour le profil
+      // l'appel api pour mettre à jour le profil
       // final response = await http.put(
       //   ApiConfig.uri('/api/user/profile'),
       //   headers: ApiConfig.getauthHeaders(accessToken),
@@ -61,7 +62,8 @@ class UserProvider with ChangeNotifier {
       // Pour l'instant, mise à jour locale uniquement
       if (_userProfile != null) {
         _userProfile = UserProfile(
-          id: _userProfile!.id,
+          userId: _userProfile!.userId,
+          adherantId: _userProfile!.adherantId,
           matricule: updates['matricule'] ?? _userProfile!.matricule,
           nom: updates['nom'] ?? _userProfile!.nom,
           prenom: updates['prenom'] ?? _userProfile!.prenom,

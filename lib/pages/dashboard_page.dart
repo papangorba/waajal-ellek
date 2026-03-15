@@ -11,7 +11,7 @@ import '../services/dashboard_service.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/recent_activity_card.dart';
 import '../utils/currency_formatter.dart';
-import 'login_page.dart';
+import 'authentification/login_page.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -45,16 +45,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final connectivityService = context.read<ConnectivityService>();
 
       final accessToken = authProvider.accessToken;
-      final userId = authProvider.userId;
+      final userId = authProvider.userId?.toString();
 
       if (accessToken == null || userId == null) {
         throw Exception("Session expirée. Veuillez vous reconnecter.");
       }
 
-      //  Vérifier la connexion
       _isOffline = !await connectivityService.checkConnection();
 
-      // Appels avec support offline
       final stats = await DashboardService.getDashboardStats(
         accessToken: accessToken,
         userId: userId,
@@ -67,12 +65,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         connectivityService: connectivityService,
       );
 
+      final lastSync = await DashboardService.getLastDashboardSync();
+
       setState(() {
         _stats = stats;
         _recentActivities = activities;
-        _lastSyncAt = DateTime.now();
+        _lastSyncAt = lastSync;
       });
-
     } on Exception catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       print('Erreur dashboard: $e');
@@ -105,7 +104,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _handleSessionExpired() async {
     final authProvider = context.read<AuthProvider>();
-
     final refreshed = await authProvider.refreshAccessToken();
 
     if (refreshed) {
@@ -180,209 +178,214 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return Column(
-        children: [
+      children: [
         // Bannière offline
         if (_isOffline)
-    Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      color: Colors.orange[100],
-      child: Row(
-        children: [
-          const Icon(Icons.wifi_off, color: Colors.orange, size: 20),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              'Mode hors ligne ',
-              style: TextStyle(color: Colors.orange, fontSize: 13),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh, size: 20),
-            onPressed: _loadDashboardData,
-          ),
-        ],
-      ),
-    ),
-
-    Expanded(
-    child:RefreshIndicator(
-      onRefresh: _loadDashboardData,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Bonjour, ${user?.prenom ?? ""}',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Voici un résumé de votre compte',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildLastSyncButton(),
-            const SizedBox(height: 20),
-
-            // ====== GRID 2 PAR LIGNE ======
-            GridView.count(
-              shrinkWrap: true,
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.78,
-              physics: const NeverScrollableScrollPhysics(),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            color: Colors.orange[100],
+            child: Row(
               children: [
-                InfoStatCard(
-                  title: 'Capital Retraite',
-                  mainValue: _stats!.capitalRetraite,
-                  icon: Icons.account_balance_wallet,
-                  color: Colors.blue,
-                  isCurrency: true,
-                  details: [
-                    {
-                      'label': 'Cotisation mensuelle',
-                      'value': _stats!.cotisationMensuelle,
-                      'isCurrency': true,
-                    },
-                    {
-                      'label': 'Total cotisé',
-                      'value': _stats!.totalCotisations,
-                      'isCurrency': true,
-                    },
-                  ],
+                const Icon(Icons.wifi_off, color: Colors.orange, size: 20),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Mode hors ligne',
+                    style: TextStyle(color: Colors.orange, fontSize: 13),
+                  ),
                 ),
-                InfoStatCard(
-                  title: 'Pension Estimée',
-                  mainValue: _stats!.pensionEstimee,
-                  icon: Icons.verified,
-                  color: Colors.green,
-                  isCurrency: true,
-                  details: [
-                    {
-                      'label': 'Taux de remplacement',
-                      'value': (_stats!.tauxRemplacement * 100).toInt(),
-                      'suffix': '%',
-                    },
-                    {
-                      'label': 'Projection à 5 ans',
-                      'value': _stats!.projection5ans,
-                      'isCurrency': true,
-                    },
-                  ],
-                ),
-                InfoStatCard(
-                  title: 'Années de Service',
-                  mainValue: _stats!.anneesService,
-                  suffix: 'ans',
-                  icon: Icons.calendar_month,
-                  color: Colors.purple,
-                  details: [
-                    {
-                      'label': 'Âge actuel',
-                      'value': _stats!.ageActuel,
-                      'suffix': 'ans',
-                    },
-                    {
-                      'label': 'Avant retraite',
-                      'value': _stats!.anneesAvantRetraite,
-                      'suffix': 'ans',
-                    },
-                  ],
-                ),
-                InfoStatCard(
-                  title: 'Intérêts Cumulés',
-                  mainValue: _stats!.interetsCumules,
-                  icon: Icons.trending_up,
-                  color: Colors.orange,
-                  isCurrency: true,
-                  details: [
-                    {
-                      'label': 'Taux intérêt',
-                      'value': (_stats!.tauxInteret * 100).toStringAsFixed(1),
-                      'suffix': '%',
-                    },
-                    {
-                      'label': 'Projection 10 ans',
-                      'value': _stats!.projection10ans,
-                      'isCurrency': true,
-                    },
-                  ],
+                IconButton(
+                  icon: const Icon(Icons.refresh, size: 20),
+                  onPressed: _loadDashboardData,
                 ),
               ],
             ),
+          ),
 
-            const SizedBox(height: 32),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _loadDashboardData,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Bonjour, ${user?.prenom ?? ""}',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Voici un résumé de votre compte',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildLastSyncButton(),
+                  const SizedBox(height: 20),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const SimulationScreen()),
-                  );
-                },
-                icon: const Icon(Icons.calculate),
-                label: const Text('Simuler ma pension'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
+                  // GRID 2 PAR LIGNE
+                  GridView.count(
+                    shrinkWrap: true,
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.78,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      InfoStatCard(
+                        title: 'Capital Retraite',
+                        mainValue: _stats!.capitalRetraite,
+                        icon: Icons.account_balance_wallet,
+                        color: Colors.blue,
+                        isCurrency: true,
+                        details: [
+                          {
+                            'label': 'Cotisation mensuelle',
+                            'value': _stats!.cotisationMensuelle,
+                            'isCurrency': true,
+                          },
+                          {
+                            'label': 'Total cotisé',
+                            'value': _stats!.totalCotisations,
+                            'isCurrency': true,
+                          },
+                        ],
+                      ),
+                      InfoStatCard(
+                        title: 'Pension Estimée',
+                        mainValue: _stats!.pensionEstimee,
+                        icon: Icons.verified,
+                        color: Colors.green,
+                        isCurrency: true,
+                        details: [
+                          {
+                            'label': 'Taux de remplacement',
+                            'value': (_stats!.tauxRemplacement * 100).toInt(),
+                            'suffix': '%',
+                          },
+                          {
+                            'label': 'Projection à 5 ans',
+                            'value': _stats!.projection5ans,
+                            'isCurrency': true,
+                          },
+                        ],
+                      ),
+                      InfoStatCard(
+                        title: 'Années de Service',
+                        mainValue: _stats!.anneesService,
+                        suffix: 'ans',
+                        icon: Icons.calendar_month,
+                        color: Colors.purple,
+                        details: [
+                          {
+                            'label': 'Âge actuel',
+                            'value': _stats!.ageActuel,
+                            'suffix': 'ans',
+                          },
+                          {
+                            'label': 'Avant retraite',
+                            'value': _stats!.anneesAvantRetraite,
+                            'suffix': 'ans',
+                          },
+                        ],
+                      ),
+                      InfoStatCard(
+                        title: 'Intérêts Cumulés',
+                        mainValue: _stats!.interetsCumules,
+                        icon: Icons.trending_up,
+                        color: Colors.orange,
+                        isCurrency: true,
+                        details: [
+                          {
+                            'label': 'Taux intérêt',
+                            'value': (_stats!.tauxInteret * 100)
+                                .toStringAsFixed(1),
+                            'suffix': '%',
+                          },
+                          {
+                            'label': 'Projection 10 ans',
+                            'value': _stats!.projection10ans,
+                            'isCurrency': true,
+                          },
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const SimulationScreen()),
+                        );
+                      },
+                      icon: const Icon(Icons.calculate),
+                      label: const Text('Simuler ma pension'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Activité Récente',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      TextButton(
+                        onPressed: () {},
+                        child: const Text('Voir tout'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  if (_recentActivities.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text('Aucune activité récente'),
+                      ),
+                    )
+                  else
+                    ...(_recentActivities.map((activity) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _buildActivityCard(activity),
+                      );
+                    })),
+                ],
               ),
             ),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Activité Récente',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text('Voir tout'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (_recentActivities.isEmpty)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text('Aucune activité récente'),
-                ),
-              )
-            else
-              ...(_recentActivities.map((activity) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _buildActivityCard(activity),
-                );
-              })),
-          ],
+          ),
         ),
-      ),
-    ),
-    ),
-    ],
+      ],
     );
   }
 
   Widget _buildLastSyncButton() {
     if (_lastSyncAt == null) return const SizedBox();
 
+    final localSync = _lastSyncAt!.toLocal();
     final formattedDate =
-        "${_lastSyncAt!.day.toString().padLeft(2, '0')}/"
-        "${_lastSyncAt!.month.toString().padLeft(2, '0')}/"
-        "${_lastSyncAt!.year} à "
-        "${_lastSyncAt!.hour.toString().padLeft(2, '0')}:"
-        "${_lastSyncAt!.minute.toString().padLeft(2, '0')}";
+        "${localSync.day.toString().padLeft(2, '0')}/"
+        "${localSync.month.toString().padLeft(2, '0')}/"
+        "${localSync.year} à "
+        "${localSync.hour.toString().padLeft(2, '0')}:"
+        "${localSync.minute.toString().padLeft(2, '0')}";
 
     return SizedBox(
       width: double.infinity,
@@ -409,11 +412,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  //  Widget pour afficher une activité récente
   Widget _buildActivityCard(RecentActivityModel activity) {
     Color typeColor;
     IconData typeIcon;
     String typeLabel;
+
+    String formatDate(String? raw) {
+      if (raw == null || raw.isEmpty) return 'Date inconnue';
+      try {
+        final d = DateTime.parse(raw).toLocal();
+        return "${d.day.toString().padLeft(2, '0')}/"
+            "${d.month.toString().padLeft(2, '0')}/"
+            "${d.year}";
+      } catch (e) {
+        return 'Date invalide';
+      }
+    }
 
     switch (activity.type) {
       case 'COTISATION':
@@ -437,6 +451,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         typeLabel = activity.type;
     }
 
+    //isPaid gère "Payé", "Paye", "Actif"
     final statusColor = activity.isPaid ? Colors.green : Colors.orange;
 
     return Card(
@@ -454,7 +469,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          '$typeLabel ${activity.typeTransaction}\n${activity.dateVersement}',
+          '$typeLabel • ${activity.typeTransaction}\n${formatDate(activity.dateVersement)}',
         ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -476,7 +491,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-//  Widgets InfoStatCard et AutoScrollText restent identiques
 class InfoStatCard extends StatelessWidget {
   final String title;
   final dynamic mainValue;
@@ -499,23 +513,17 @@ class InfoStatCard extends StatelessWidget {
 
   String _formatValue(dynamic value, String? suffix, bool isCurrency) {
     if (isCurrency) {
-      if (value is double) {
-        return CurrencyFormatter.format(value);
-      } else if (value is int) {
-        return CurrencyFormatter.format(value.toDouble());
-      } else if (value is num) {
-        return CurrencyFormatter.format(value.toDouble());
-      }
+      if (value is double) return CurrencyFormatter.format(value);
+      if (value is int) return CurrencyFormatter.format(value.toDouble());
+      if (value is num) return CurrencyFormatter.format(value.toDouble());
     }
-
-    if (value is int) {
-      return suffix != null ? '$value $suffix' : value.toString();
-    } else if (value is String) {
-      return suffix != null ? '$value $suffix' : value;
-    } else if (value is double) {
-      return suffix != null ? '${value.toStringAsFixed(1)} $suffix' : value.toString();
+    if (value is int) return suffix != null ? '$value $suffix' : value.toString();
+    if (value is String) return suffix != null ? '$value $suffix' : value;
+    if (value is double) {
+      return suffix != null
+          ? '${value.toStringAsFixed(1)} $suffix'
+          : value.toString();
     }
-
     return value.toString();
   }
 
@@ -558,7 +566,6 @@ class InfoStatCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-
           AutoScrollText(
             text: _formatValue(mainValue, suffix, isCurrency),
             style: const TextStyle(
@@ -567,7 +574,6 @@ class InfoStatCard extends StatelessWidget {
             ),
             height: 22,
           ),
-
           const SizedBox(height: 12),
           Expanded(
             child: SingleChildScrollView(

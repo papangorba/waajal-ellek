@@ -91,14 +91,15 @@ class DataService {
     if (user.isEmpty) return null;
 
     return UserProfile(
-      id: user['id'],
+      userId: user['id'],
+      adherantId: user['adherant_id'],
       matricule: user['matricule'],
       nom: user['nom'],
       prenom: user['prenom'],
       email: user['email'],
       grade: user['grade'],
-      dateNaissance: (user['date_naissance']),
-      dateEngagement: (user['date_incorporation']),
+      dateNaissance: user['date_naissance'],
+      dateEngagement: user['date_incorporation'],
       statut: user['statut'],
     );
   }
@@ -215,7 +216,7 @@ class DataService {
     int nombreCotisations = 0;
 
     for (var cot in cotisations) {
-      if (cot.statut.toUpperCase() == 'PAYE') {
+      if (cot.statut?.toUpperCase() == 'PAYE') {
         totalCotisations += cot.montant;
         nombreCotisations++;
       }

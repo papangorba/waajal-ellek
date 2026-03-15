@@ -1,4 +1,4 @@
-package com.example.waajal_elek;
+package com.diamonotech.waajal_elek;
 
 import io.flutter.embedding.android.FlutterActivity;
 

@@ -1,4 +1,4 @@
-//  Modèle pour le dashboard
+// Modèle pour le dashboard
 class DashboardStatsModel {
   final double capitalRetraite;
   final double cotisationMensuelle;
@@ -44,13 +44,11 @@ class DashboardStatsModel {
             (p) => p['key'] == panelKey,
         orElse: () => {'indicators': []},
       );
-
       final indicators = panel['indicators'] as List<dynamic>? ?? [];
       final indicator = indicators.firstWhere(
             (i) => i['key'] == indicatorKey,
         orElse: () => {'value': '0'},
       );
-
       return double.tryParse(indicator['value'].toString()) ?? 0.0;
     }
 
@@ -75,11 +73,11 @@ class DashboardStatsModel {
   }
 }
 
-//  Modèle pour les activités récentes
+// Modèle pour les activités récentes
 class RecentActivityModel {
   final int id;
   final int adherantId;
-  final String dateVersement;
+  final String? dateVersement;
   final double montant;
   final String statut;
   final String type;
@@ -88,7 +86,7 @@ class RecentActivityModel {
   RecentActivityModel({
     required this.id,
     required this.adherantId,
-    required this.dateVersement,
+    this.dateVersement,
     required this.montant,
     required this.statut,
     required this.type,
@@ -99,7 +97,7 @@ class RecentActivityModel {
     return RecentActivityModel(
       id: json['id'] as int,
       adherantId: json['adherantId'] as int,
-      dateVersement: json['dateVersement'] as String,
+      dateVersement: json['dateVersement'] as String?,
       montant: (json['montant'] as num).toDouble(),
       statut: json['statut'] as String,
       type: json['type'] as String,
@@ -107,15 +105,18 @@ class RecentActivityModel {
     );
   }
 
-
   DateTime get date {
+    if (dateVersement == null || dateVersement!.isEmpty) return DateTime.now();
     try {
-      return DateTime.parse(dateVersement);
+      return DateTime.parse(dateVersement!);
     } catch (e) {
       return DateTime.now();
     }
   }
 
-
-  bool get isPaid => statut.toUpperCase() == 'PAYE';
+  //Statut normalisé : gère "Payé", "Paye", "PAYE", "Actif"
+  bool get isPaid {
+    final s = statut.toLowerCase().replaceAll('é', 'e').trim();
+    return s == 'paye' || s == 'actif';
+  }
 }

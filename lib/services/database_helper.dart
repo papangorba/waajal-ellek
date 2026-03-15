@@ -24,15 +24,13 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
   }
 
-  //creation de la base de donnee locale
   Future<void> _onCreate(Database db, int version) async {
-    // Utilisateur
     await db.execute('''
       CREATE TABLE users (
         id TEXT PRIMARY KEY,
@@ -50,35 +48,36 @@ class DatabaseHelper {
       )
     ''');
 
-    // COTISATIONS
+    //table cotisation
     await db.execute('''
       CREATE TABLE cotisations (
         id INTEGER PRIMARY KEY,
         user_id TEXT NOT NULL,
-        date_versement TEXT NOT NULL,
+        adherant_id INTEGER NOT NULL,
+        date_versement TEXT,
         montant REAL NOT NULL,
         type_cotisation TEXT NOT NULL,
-        statut TEXT NOT NULL,
+        statut TEXT,
         created_at TEXT,
         FOREIGN KEY (user_id) REFERENCES users (id)
       )
     ''');
 
-    // PENSIONS
+    //table pension
     await db.execute('''
       CREATE TABLE pensions (
         id INTEGER PRIMARY KEY,
         user_id TEXT NOT NULL,
-        date_versement TEXT NOT NULL,
+        adherant_id INTEGER NOT NULL,
+        date_versement TEXT,
         montant REAL NOT NULL,
         type_pension TEXT NOT NULL,
-        statut TEXT NOT NULL,
+        statut TEXT,
         created_at TEXT,
         FOREIGN KEY (user_id) REFERENCES users (id)
       )
     ''');
-
-    // DASHBOARD
+  //table dashbord
     await db.execute('''
       CREATE TABLE dashboard_stats (
         user_id TEXT PRIMARY KEY,
@@ -99,13 +98,13 @@ class DatabaseHelper {
       )
     ''');
 
-    // RECENT ACTIVITe
+    //table recent activite
     await db.execute('''
       CREATE TABLE recent_activities (
         id INTEGER PRIMARY KEY,
         user_id TEXT NOT NULL,
         adherant_id INTEGER NOT NULL,
-        date_versement TEXT NOT NULL,
+        date_versement TEXT,
         montant REAL NOT NULL,
         statut TEXT NOT NULL,
         type TEXT NOT NULL,
@@ -114,8 +113,7 @@ class DatabaseHelper {
         FOREIGN KEY (user_id) REFERENCES users (id)
       )
     ''');
-
-    // Sychronisation des versions
+   //table last synchronisation
     await db.execute('''
       CREATE TABLE sync_metadata (
         key TEXT PRIMARY KEY,
@@ -126,15 +124,63 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 3) {
+    if (oldVersion < 5) {
+      await db.execute('DROP TABLE IF EXISTS cotisations');
+      await db.execute('''
+        CREATE TABLE cotisations (
+          id INTEGER PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          adherant_id INTEGER NOT NULL,
+          date_versement TEXT,
+          montant REAL NOT NULL,
+          type_cotisation TEXT NOT NULL,
+          statut TEXT,
+          created_at TEXT,
+          FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+      ''');
+
+      await db.execute('DROP TABLE IF EXISTS pensions');
+      await db.execute('''
+        CREATE TABLE pensions (
+          id INTEGER PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          adherant_id INTEGER NOT NULL,
+          date_versement TEXT,
+          montant REAL NOT NULL,
+          type_pension TEXT NOT NULL,
+          statut TEXT,
+          created_at TEXT,
+          FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+      ''');
+
+      await db.execute('DROP TABLE IF EXISTS recent_activities');
+      await db.execute('''
+        CREATE TABLE recent_activities (
+          id INTEGER PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          adherant_id INTEGER NOT NULL,
+          date_versement TEXT,
+          montant REAL NOT NULL,
+          statut TEXT NOT NULL,
+          type TEXT NOT NULL,
+          type_transaction TEXT NOT NULL,
+          created_at TEXT,
+          FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+      ''');
+
+      // Créer pensions et recent_activities si elles n'existaient pas
       await db.execute('''
         CREATE TABLE IF NOT EXISTS pensions (
           id INTEGER PRIMARY KEY,
           user_id TEXT NOT NULL,
-          date_versement TEXT NOT NULL,
+          adherant_id INTEGER NOT NULL,
+          date_versement TEXT,
           montant REAL NOT NULL,
           type_pension TEXT NOT NULL,
-          statut TEXT NOT NULL,
+          statut TEXT,
           created_at TEXT,
           FOREIGN KEY (user_id) REFERENCES users (id)
         )
@@ -145,7 +191,7 @@ class DatabaseHelper {
           id INTEGER PRIMARY KEY,
           user_id TEXT NOT NULL,
           adherant_id INTEGER NOT NULL,
-          date_versement TEXT NOT NULL,
+          date_versement TEXT,
           montant REAL NOT NULL,
           statut TEXT NOT NULL,
           type TEXT NOT NULL,
@@ -157,13 +203,13 @@ class DatabaseHelper {
     }
   }
 
-  //ajoute de l'utilisateur
+  //user
   Future<void> saveUser(UserProfile user) async {
     final db = await database;
     await db.insert(
       'users',
       {
-        'id': user.id,
+        'id': user.userId?.toString(),
         'matricule': user.matricule,
         'nom': user.nom,
         'prenom': user.prenom,
@@ -188,7 +234,7 @@ class DatabaseHelper {
 
     final d = res.first;
     return UserProfile(
-      id: d['id'] as String,
+      userId: int.parse(d['id'] as String),
       matricule: d['matricule'] as String,
       nom: d['nom'] as String,
       prenom: d['prenom'] as String,
@@ -202,25 +248,27 @@ class DatabaseHelper {
     );
   }
 
-  // enregistrement cotisation
-  Future<void> saveCotisations(String userId, List<Cotisation> cotisations) async {
+
+  //save cotisation
+  Future<void> saveCotisations(
+      String userId, int adherantId, List<Cotisation> cotisations) async {
     final db = await database;
     final batch = db.batch();
 
-    // Supprimer les anciennes
+    //Supprimer les anciennes données avant d'insérer les nouvelles
     batch.delete('cotisations', where: 'user_id = ?', whereArgs: [userId]);
 
-    // Insérer les nouvelles
     for (final cot in cotisations) {
       batch.insert(
         'cotisations',
         {
           'id': cot.id,
           'user_id': userId,
-          'date_versement': cot.dateVersement,
+          'adherant_id': adherantId,
+          'date_versement': cot.dateVersement ?? '',
           'montant': cot.montant,
           'type_cotisation': cot.typeCotisation,
-          'statut': cot.statut,
+          'statut': cot.statut ?? '',
           'created_at': DateTime.now().toIso8601String(),
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
@@ -228,7 +276,7 @@ class DatabaseHelper {
     }
 
     await batch.commit(noResult: true);
-    print('${cotisations.length} cotisations sauvegardées');
+    print('${cotisations.length} cotisations sauvegardées (userId: $userId, adherantId: $adherantId)');
   }
 
   Future<List<Cotisation>> getCotisations(String userId) async {
@@ -240,35 +288,41 @@ class DatabaseHelper {
       orderBy: 'date_versement DESC',
     );
 
-    return res.map((d) => Cotisation(
-      id: d['id'] as int,
-      adherantId: int.parse(userId.split('-').last),
-      dateVersement: d['date_versement'] as String,
-      montant: d['montant'] as double,
-      typeCotisation: d['type_cotisation'] as String,
-      statut: d['statut'] as String,
-    )).toList();
+    return res.map((d) {
+      final dateVersement = d['date_versement'] as String?;
+      return Cotisation(
+        id: d['id'] as int,
+        adherantId: d['adherant_id'] as int,
+        dateVersement: (dateVersement == null || dateVersement.isEmpty)
+            ? null
+            : dateVersement,
+        montant: d['montant'] as double,
+        typeCotisation: d['type_cotisation'] as String,
+        statut: d['statut'] as String?,
+      );
+    }).toList();
   }
 
-  // enregistrement pension
-  Future<void> savePensions(String userId, List<PensionModel> pensions) async {
+  // save pension
+  Future<void> savePensions(
+      String userId, int adherantId, List<PensionModel> pensions) async {
     final db = await database;
     final batch = db.batch();
 
-    // Supprimer les anciennes
+    // Supprimer les anciennes données avant d'insérer les nouvelles
     batch.delete('pensions', where: 'user_id = ?', whereArgs: [userId]);
 
-    // Insérer les nouvelles
     for (final pension in pensions) {
       batch.insert(
         'pensions',
         {
           'id': pension.id,
           'user_id': userId,
-          'date_versement': pension.dateVersement,
+          'adherant_id': adherantId,
+          'date_versement': pension.dateVersement ?? '',
           'montant': pension.montant,
           'type_pension': pension.typePension,
-          'statut': pension.statut,
+          'statut': pension.statut ?? '',
           'created_at': DateTime.now().toIso8601String(),
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
@@ -288,19 +342,25 @@ class DatabaseHelper {
       orderBy: 'date_versement DESC',
     );
 
-    return res.map((d) => PensionModel(
-      id: d['id'] as int,
-      adherantId: int.parse(userId.split('-').last),
-      dateVersement: d['date_versement'] as String,
-      montant: d['montant'] as double,
-      typePension: d['type_pension'] as String,
-      statut: d['statut'] as String,
-    )).toList();
+    return res.map((d) {
+      final dateVersement = d['date_versement'] as String?;
+      return PensionModel(
+        id: d['id'] as int,
+        adherantId: d['adherant_id'] as int,
+        dateVersement: (dateVersement == null || dateVersement.isEmpty)
+            ? null
+            : dateVersement,
+        montant: d['montant'] as double,
+        typePension: d['type_pension'] as String,
+        statut: d['statut'] as String?,
+      );
+    }).toList();
   }
 
-  // enregistrement tAbleau de bord
+  //save infos dashbord
   Future<void> saveDashboardStats(String userId, DashboardStatsModel s) async {
     final db = await database;
+    //remplace automatiquement les anciens donnes
     await db.insert(
       'dashboard_stats',
       {
@@ -321,7 +381,7 @@ class DatabaseHelper {
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
-    print('Dashboard  sauvegardées');
+    print('Dashboard sauvegardé');
   }
 
   Future<DashboardStatsModel?> getDashboardStats(String userId) async {
@@ -350,15 +410,15 @@ class DatabaseHelper {
     );
   }
 
-  // enregistrement des activites recentes
-  Future<void> saveRecentActivities(String userId, List<RecentActivityModel> activities) async {
+  //save recent activite
+  Future<void> saveRecentActivities(
+      String userId, List<RecentActivityModel> activities) async {
     final db = await database;
     final batch = db.batch();
 
-    // Supprimer les anciennes
+    //Supprimer les anciennes données avant d'insérer les nouvelles
     batch.delete('recent_activities', where: 'user_id = ?', whereArgs: [userId]);
 
-    // Insérer les nouvelles
     for (final activity in activities) {
       batch.insert(
         'recent_activities',
@@ -366,7 +426,7 @@ class DatabaseHelper {
           'id': activity.id,
           'user_id': userId,
           'adherant_id': activity.adherantId,
-          'date_versement': activity.dateVersement,
+          'date_versement': activity.dateVersement ?? '',
           'montant': activity.montant,
           'statut': activity.statut,
           'type': activity.type,
@@ -388,21 +448,27 @@ class DatabaseHelper {
       where: 'user_id = ?',
       whereArgs: [userId],
       orderBy: 'date_versement DESC',
-      limit: 10,
+      limit: 20,
     );
 
-    return res.map((d) => RecentActivityModel(
-      id: d['id'] as int,
-      adherantId: d['adherant_id'] as int,
-      dateVersement: d['date_versement'] as String,
-      montant: d['montant'] as double,
-      statut: d['statut'] as String,
-      type: d['type'] as String,
-      typeTransaction: d['type_transaction'] as String,
-    )).toList();
+    return res.map((d) {
+      final dateVersement = d['date_versement'] as String?;
+      return RecentActivityModel(
+        id: d['id'] as int,
+        adherantId: d['adherant_id'] as int,
+        dateVersement: (dateVersement == null || dateVersement.isEmpty)
+            ? null
+            : dateVersement,
+        montant: d['montant'] as double,
+        statut: d['statut'] as String,
+        type: d['type'] as String,
+        typeTransaction: d['type_transaction'] as String,
+      );
+    }).toList();
   }
 
-  // Synchronisation
+  // ============================
+  //mise a jour des sync
   Future<void> updateSyncMetadata(String key, DateTime time) async {
     final db = await database;
     await db.insert(
@@ -418,12 +484,26 @@ class DatabaseHelper {
 
   Future<DateTime?> getLastSync(String key) async {
     final db = await database;
-    final res = await db.query('sync_metadata', where: 'key = ?', whereArgs: [key]);
+    final res =
+    await db.query('sync_metadata', where: 'key = ?', whereArgs: [key]);
     if (res.isEmpty) return null;
-    return DateTime.parse(res.first['last_sync'] as String);
+    return DateTime.parse(res.first['last_sync'] as String).toLocal();
+  }
+  Future<void> updateLastSync(String key) async {
+    final db = await database;
+
+    await db.insert(
+      'sync_metadata',
+      {
+        'key': key,
+        'last_sync': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
-  // Suppression des anciennes donnes de l'utilisateur
+  // ============================
+  //suppresion  des infos de l'utilisateur connecter a la deconnexion
   Future<void> clearUserData(String userId) async {
     final db = await database;
     await db.delete('cotisations', where: 'user_id = ?', whereArgs: [userId]);
