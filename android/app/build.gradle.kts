@@ -15,12 +15,12 @@ plugins {
 }
 
 android {
-    namespace = "com.diamonotech.waajal_elek"
+    namespace = "com.diamonotech.we"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     defaultConfig {
-        applicationId = "com.diamonotech.waajal_elek"
+        applicationId = "com.diamonotech.we"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

@@ -236,10 +236,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     childAspectRatio: 0.78,
                     physics: const NeverScrollableScrollPhysics(),
                     children: [
+
+                      // PANEL_1 - Total Cotisation
                       InfoStatCard(
-                        title: 'Capital Retraite',
-                        mainValue: _stats!.capitalRetraite,
-                        icon: Icons.account_balance_wallet,
+                        title: 'Total Cotisation',
+                        mainValue: _stats!.totalCotisation,
+                        icon: Icons.savings,
                         color: Colors.blue,
                         isCurrency: true,
                         details: [
@@ -249,70 +251,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             'isCurrency': true,
                           },
                           {
-                            'label': 'Total cotisé',
-                            'value': _stats!.totalCotisations,
+                            'label': 'Cotisation Est. Ret.',
+                            'value': _stats!.cotisationRetraite,
                             'isCurrency': true,
                           },
                         ],
                       ),
+
+                      // PANEL_2 - Capital Actuel
                       InfoStatCard(
-                        title: 'Pension Estimée',
-                        mainValue: _stats!.pensionEstimee,
-                        icon: Icons.verified,
+                        title: 'Capital Actuel',
+                        mainValue: _stats!.capitalActuel,
+                        icon: Icons.account_balance_wallet,
                         color: Colors.green,
                         isCurrency: true,
                         details: [
                           {
-                            'label': 'Taux de remplacement',
-                            'value': (_stats!.tauxRemplacement * 100).toInt(),
-                            'suffix': '%',
+                            'label': 'Taux de rendement',
+                            'value': '${(_stats!.tauxRendement * 100).toStringAsFixed(2)} %',
+                            'isCurrency': false,
                           },
                           {
-                            'label': 'Projection à 5 ans',
-                            'value': _stats!.projection5ans,
+                            'label': 'Rendement cumulé',
+                            'value': _stats!.rendementCumule,
                             'isCurrency': true,
                           },
                         ],
                       ),
+
+                      // PANEL_3 - Date d'adhésion
                       InfoStatCard(
-                        title: 'Années de Service',
-                        mainValue: _stats!.anneesService,
-                        suffix: 'ans',
+                        title: "Date d'adhésion",
+                        mainValue: _stats!.dateAdhesion,
                         icon: Icons.calendar_month,
                         color: Colors.purple,
+                        isCurrency: false,
                         details: [
                           {
-                            'label': 'Âge actuel',
-                            'value': _stats!.ageActuel,
-                            'suffix': 'ans',
+                            'label': 'Période cumulée',
+                            'value': _stats!.periodeCumulee,
+                            'isCurrency': false,
                           },
                           {
-                            'label': 'Avant retraite',
-                            'value': _stats!.anneesAvantRetraite,
-                            'suffix': 'ans',
+                            'label': 'Période restante',
+                            'value': _stats!.periodeRestante,
+                            'isCurrency': false,
                           },
                         ],
                       ),
+
+                      // PANEL_4 - Date de retraite
                       InfoStatCard(
-                        title: 'Intérêts Cumulés',
-                        mainValue: _stats!.interetsCumules,
-                        icon: Icons.trending_up,
+                        title: 'Date de retraite',
+                        mainValue: _stats!.dateRetraite,
+                        icon: Icons.verified,
                         color: Colors.orange,
-                        isCurrency: true,
+                        isCurrency: false,
                         details: [
                           {
-                            'label': 'Taux intérêt',
-                            'value': (_stats!.tauxInteret * 100)
-                                .toStringAsFixed(1),
-                            'suffix': '%',
-                          },
-                          {
-                            'label': 'Projection 10 ans',
-                            'value': _stats!.projection10ans,
+                            'label': 'Pension estimée',
+                            'value': _stats!.pensionMensuelle,
                             'isCurrency': true,
                           },
+                          {
+                            'label': 'Pensions perçues',
+                            'value': _stats!.pensionRecue,
+                            'isCurrency': false,
+                          },
                         ],
                       ),
+
                     ],
                   ),
 

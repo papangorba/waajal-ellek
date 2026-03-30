@@ -9,9 +9,14 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'config/theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/user_provider.dart';
+import 'dart:io';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Fix certificat SSL sur Android physique
+  HttpOverrides.global = MyHttpOverrides();
+
 
   await dotenv.load(fileName: '.env');
 
@@ -20,6 +25,15 @@ void main() async {
   await initializeDateFormatting('fr_FR', null);
 
   runApp(const WaajalElekApp());
+}
+
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
 }
 
 class WaajalElekApp extends StatelessWidget {

@@ -24,7 +24,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -79,24 +79,24 @@ class DatabaseHelper {
     ''');
   //table dashbord
     await db.execute('''
-      CREATE TABLE dashboard_stats (
-        user_id TEXT PRIMARY KEY,
-        capital_retraite REAL NOT NULL,
-        cotisation_mensuelle REAL NOT NULL,
-        total_cotisations REAL NOT NULL,
-        pension_estimee REAL NOT NULL,
-        taux_remplacement REAL NOT NULL,
-        projection_5ans REAL NOT NULL,
-        annees_service INTEGER NOT NULL,
-        age_actuel INTEGER NOT NULL,
-        annees_avant_retraite INTEGER NOT NULL,
-        interets_cumules REAL NOT NULL,
-        taux_interet REAL NOT NULL,
-        projection_10ans REAL NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users (id)
-      )
-    ''');
+  CREATE TABLE dashboard_stats (
+    user_id TEXT PRIMARY KEY,
+    total_cotisation REAL NOT NULL,
+    cotisation_mensuelle REAL NOT NULL,
+    cotisation_retraite REAL NOT NULL,
+    capital_actuel REAL NOT NULL,
+    taux_rendement REAL NOT NULL,
+    rendement_cumule REAL NOT NULL,
+    date_adhesion TEXT NOT NULL,
+    periode_cumulee TEXT NOT NULL,
+    periode_restante TEXT NOT NULL,
+    date_retraite TEXT NOT NULL,
+    pension_mensuelle REAL NOT NULL,
+    pension_recue TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+  )
+''');
 
     //table recent activite
     await db.execute('''
@@ -124,7 +124,7 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 5) {
+    if (oldVersion < 6) {
       await db.execute('DROP TABLE IF EXISTS cotisations');
       await db.execute('''
         CREATE TABLE cotisations (
@@ -360,23 +360,22 @@ class DatabaseHelper {
   //save infos dashbord
   Future<void> saveDashboardStats(String userId, DashboardStatsModel s) async {
     final db = await database;
-    //remplace automatiquement les anciens donnes
     await db.insert(
       'dashboard_stats',
       {
         'user_id': userId,
-        'capital_retraite': s.capitalRetraite,
+        'total_cotisation': s.totalCotisation,
         'cotisation_mensuelle': s.cotisationMensuelle,
-        'total_cotisations': s.totalCotisations,
-        'pension_estimee': s.pensionEstimee,
-        'taux_remplacement': s.tauxRemplacement,
-        'projection_5ans': s.projection5ans,
-        'annees_service': s.anneesService,
-        'age_actuel': s.ageActuel,
-        'annees_avant_retraite': s.anneesAvantRetraite,
-        'interets_cumules': s.interetsCumules,
-        'taux_interet': s.tauxInteret,
-        'projection_10ans': s.projection10ans,
+        'cotisation_retraite': s.cotisationRetraite,
+        'capital_actuel': s.capitalActuel,
+        'taux_rendement': s.tauxRendement,
+        'rendement_cumule': s.rendementCumule,
+        'date_adhesion': s.dateAdhesion,
+        'periode_cumulee': s.periodeCumulee,
+        'periode_restante': s.periodeRestante,
+        'date_retraite': s.dateRetraite,
+        'pension_mensuelle': s.pensionMensuelle,
+        'pension_recue': s.pensionRecue,
         'updated_at': DateTime.now().toIso8601String(),
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
@@ -395,18 +394,18 @@ class DatabaseHelper {
 
     final d = res.first;
     return DashboardStatsModel(
-      capitalRetraite: d['capital_retraite'] as double,
+      totalCotisation: d['total_cotisation'] as double,
       cotisationMensuelle: d['cotisation_mensuelle'] as double,
-      totalCotisations: d['total_cotisations'] as double,
-      pensionEstimee: d['pension_estimee'] as double,
-      tauxRemplacement: d['taux_remplacement'] as double,
-      projection5ans: d['projection_5ans'] as double,
-      anneesService: d['annees_service'] as int,
-      ageActuel: d['age_actuel'] as int,
-      anneesAvantRetraite: d['annees_avant_retraite'] as int,
-      interetsCumules: d['interets_cumules'] as double,
-      tauxInteret: d['taux_interet'] as double,
-      projection10ans: d['projection_10ans'] as double,
+      cotisationRetraite: d['cotisation_retraite'] as double,
+      capitalActuel: d['capital_actuel'] as double,
+      tauxRendement: d['taux_rendement'] as double,
+      rendementCumule: d['rendement_cumule'] as double,
+      dateAdhesion: d['date_adhesion'] as String,
+      periodeCumulee: d['periode_cumulee'] as String,
+      periodeRestante: d['periode_restante'] as String,
+      dateRetraite: d['date_retraite'] as String,
+      pensionMensuelle: d['pension_mensuelle'] as double,
+      pensionRecue: d['pension_recue'] as String,
     );
   }
 

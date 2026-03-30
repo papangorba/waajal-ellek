@@ -236,18 +236,25 @@ class DataService {
     final projection10ans = capitalRetraite * 1.7;
 
     return DashboardStatsModel(
-      capitalRetraite: capitalRetraite,
-      cotisationMensuelle: cotisationMensuelle,
-      totalCotisations: totalCotisations,
-      pensionEstimee: pensionMensuelle,
-      tauxRemplacement: tauxRemplacement,
-      projection5ans: projection5ans,
-      anneesService: anneesService,
-      ageActuel: ageActuel,
-      anneesAvantRetraite: anneesAvantRetraite,
-      interetsCumules: interetsCumules,
-      tauxInteret: tauxInteret,
-      projection10ans: projection10ans,
+      // PANEL_1 - Total Cotisation
+      totalCotisation: 180000.0,
+      cotisationMensuelle: 45000.0,
+      cotisationRetraite: 180000.0,
+
+      // PANEL_2 - Capital Actuel
+      capitalActuel: 10000.0,
+      tauxRendement: -0.94,
+      rendementCumule: -170000.0,
+
+      // PANEL_3 - Date d'adhésion
+      dateAdhesion: '05 March 2026',
+      periodeCumulee: '0 ans, 0 mois',
+      periodeRestante: '35 ans, 6 mois',
+
+      // PANEL_4 - Date de retraite
+      dateRetraite: '2061-10-16',
+      pensionMensuelle: 350000.0,
+      pensionRecue: '1100000.0 / -1090000.0',
     );
   }
 

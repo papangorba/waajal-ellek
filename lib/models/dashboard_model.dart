@@ -1,45 +1,58 @@
 // Modèle pour le dashboard
 class DashboardStatsModel {
-  final double capitalRetraite;
+  // PANEL_1 - Total Cotisation
+  final double totalCotisation;
   final double cotisationMensuelle;
-  final double totalCotisations;
-  final double pensionEstimee;
-  final double tauxRemplacement;
-  final double projection5ans;
-  final int anneesService;
-  final int ageActuel;
-  final int anneesAvantRetraite;
-  final double interetsCumules;
-  final double tauxInteret;
-  final double projection10ans;
+  final double cotisationRetraite;
+
+  // PANEL_2 - Capital Actuel
+  final double capitalActuel;
+  final double tauxRendement;
+  final double rendementCumule;
+
+  // PANEL_3 - Date d'adhésion
+  final String dateAdhesion;
+  final String periodeCumulee;
+  final String periodeRestante;
+
+  // PANEL_4 - Date de retraite
+  final String dateRetraite;
+  final double pensionMensuelle;
+  final String pensionRecue;
 
   DashboardStatsModel({
-    required this.capitalRetraite,
+    required this.totalCotisation,
     required this.cotisationMensuelle,
-    required this.totalCotisations,
-    required this.pensionEstimee,
-    required this.tauxRemplacement,
-    required this.projection5ans,
-    required this.anneesService,
-    required this.ageActuel,
-    required this.anneesAvantRetraite,
-    required this.interetsCumules,
-    required this.tauxInteret,
-    required this.projection10ans,
+    required this.cotisationRetraite,
+    required this.capitalActuel,
+    required this.tauxRendement,
+    required this.rendementCumule,
+    required this.dateAdhesion,
+    required this.periodeCumulee,
+    required this.periodeRestante,
+    required this.dateRetraite,
+    required this.pensionMensuelle,
+    required this.pensionRecue,
   });
 
   factory DashboardStatsModel.fromJson(Map<String, dynamic> json) {
     final panels = json['panels'] as List<dynamic>;
 
-    double getValue(String key) {
+    // Helper : value principale d'un panel
+    String getPanelValue(String panelKey) {
       final panel = panels.firstWhere(
-            (p) => p['key'] == key,
+            (p) => p['key'] == panelKey,
         orElse: () => {'value': '0'},
       );
-      return double.tryParse(panel['value'].toString()) ?? 0.0;
+      return panel['value']?.toString() ?? '0';
     }
 
-    double getIndicator(String panelKey, String indicatorKey) {
+    double getPanelDouble(String panelKey) {
+      return double.tryParse(getPanelValue(panelKey)) ?? 0.0;
+    }
+
+    // Helper : indicateur dans un panel
+    String getIndicator(String panelKey, String indicatorKey) {
       final panel = panels.firstWhere(
             (p) => p['key'] == panelKey,
         orElse: () => {'indicators': []},
@@ -49,26 +62,33 @@ class DashboardStatsModel {
             (i) => i['key'] == indicatorKey,
         orElse: () => {'value': '0'},
       );
-      return double.tryParse(indicator['value'].toString()) ?? 0.0;
+      return indicator['value']?.toString() ?? '0';
     }
 
-    int getIndicatorInt(String panelKey, String indicatorKey) {
-      return getIndicator(panelKey, indicatorKey).toInt();
+    double getIndicatorDouble(String panelKey, String indicatorKey) {
+      return double.tryParse(getIndicator(panelKey, indicatorKey)) ?? 0.0;
     }
 
     return DashboardStatsModel(
-      capitalRetraite: getValue('CAPITAL_RETRAITE'),
-      cotisationMensuelle: getIndicator('CAPITAL_RETRAITE', 'COTISATION_MENSUEL'),
-      totalCotisations: getIndicator('CAPITAL_RETRAITE', 'TOTAL_COTISE'),
-      pensionEstimee: getValue('PENSION_ESTIMEE'),
-      tauxRemplacement: getIndicator('PENSION_ESTIMEE', 'TAUX_REMPLACEMENT') / 100,
-      projection5ans: getIndicator('PENSION_ESTIMEE', 'PROJECTION_5ANS'),
-      anneesService: getValue('ANNEES_SERVICE').toInt(),
-      ageActuel: getIndicatorInt('ANNEES_SERVICE', 'AGE_ACTUEL'),
-      anneesAvantRetraite: getIndicatorInt('ANNEES_SERVICE', 'AVANT_RETRAITE'),
-      interetsCumules: getValue('INTERETS_CUMULES'),
-      tauxInteret: getIndicator('INTERETS_CUMULES', 'TAUX_INTERET') / 100,
-      projection10ans: getIndicator('INTERETS_CUMULES', 'PROJECTION_10ANS'),
+      // PANEL_1
+      totalCotisation: getPanelDouble('PANEL_1'),
+      cotisationMensuelle: getIndicatorDouble('PANEL_1', 'COTISATION_MENSUEL'),
+      cotisationRetraite: getIndicatorDouble('PANEL_1', 'COTISATION_RETRAITE'),
+
+      // PANEL_2
+      capitalActuel: getPanelDouble('PANEL_2'),
+      tauxRendement: getIndicatorDouble('PANEL_2', 'TAUX_RENDEMENT'),
+      rendementCumule: getIndicatorDouble('PANEL_2', 'RENDEMENT_CUMMULE'),
+
+      // PANEL_3
+      dateAdhesion: getPanelValue('PANEL_3'),
+      periodeCumulee: getIndicator('PANEL_3', 'PERIODE_CUMULEE'),
+      periodeRestante: getIndicator('PANEL_3', 'PERIODE_RESTANTE'),
+
+      // PANEL_4
+      dateRetraite: getPanelValue('PANEL_4'),
+      pensionMensuelle: getIndicatorDouble('PANEL_4', 'PENSION_MENSUELLE'),
+      pensionRecue: getIndicator('PANEL_4', 'PENSION_RECUE'),
     );
   }
 }
