@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import '../main.dart';
 import '../models/auth_user_model.dart';
+import '../pages/authentification/login_page.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 
@@ -155,6 +158,45 @@ class AuthProvider with ChangeNotifier {
       await signOut();
       return false;
     }
+  }
+
+  // déconnexion forcée si on a du  401
+  Future<void> forceLogout() async {
+    _accessToken = null;
+    _refreshToken = null;
+    _userProfile = null;
+    await _clearSession();
+    notifyListeners();
+
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+
+    // SnackBar d'avertissement
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.lock_clock, color: Colors.white),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Session expirée. Veuillez vous reconnecter.',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    // Redirection vers login en vidant la pile
+    navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+    );
   }
   // logout
   Future<void> signOut() async {

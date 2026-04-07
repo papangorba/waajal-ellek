@@ -208,54 +208,46 @@ class DataService {
   }
 
   DashboardStatsModel getDashboardStats(String userId) {
-    final cotisations = getCotisations(userId);
-    final pensions = getPensions(userId);
-
-    double totalCotisations = 0;
-    int totalPoints = 0;
-    int nombreCotisations = 0;
-
-    for (var cot in cotisations) {
-      if (cot.statut?.toUpperCase() == 'PAYE') {
-        totalCotisations += cot.montant;
-        nombreCotisations++;
-      }
-    }
-
-    final pensionMensuelle = pensions.isNotEmpty ? pensions[0].montant : 0.0;
-
-    final cotisationMensuelle = 52500.0;
-    final capitalRetraite = totalCotisations * 12;
-    final tauxRemplacement = 0.60;
-    final projection5ans = pensionMensuelle * 1.15;
-    final ageActuel = 40;
-    final anneesService = 20;
-    final anneesAvantRetraite = 60 - ageActuel;
-    final tauxInteret = 0.055;
-    final interetsCumules = totalCotisations * tauxInteret;
-    final projection10ans = capitalRetraite * 1.7;
-
-    return DashboardStatsModel(
-      // PANEL_1 - Total Cotisation
-      totalCotisation: 180000.0,
-      cotisationMensuelle: 45000.0,
-      cotisationRetraite: 180000.0,
-
-      // PANEL_2 - Capital Actuel
-      capitalActuel: 10000.0,
-      tauxRendement: -0.94,
-      rendementCumule: -170000.0,
-
-      // PANEL_3 - Date d'adhésion
-      dateAdhesion: '05 March 2026',
-      periodeCumulee: '0 ans, 0 mois',
-      periodeRestante: '35 ans, 6 mois',
-
-      // PANEL_4 - Date de retraite
-      dateRetraite: '2061-10-16',
-      pensionMensuelle: 350000.0,
-      pensionRecue: '1100000.0 / -1090000.0',
-    );
+    return DashboardStatsModel.fromJson({
+      "panels": [
+        {
+          "key": "PANEL_1",
+          "label": "Capital Actuel",
+          "value": "1 445 000",
+          "indicators": [
+            {"key": "COTISATION_MENSUELLE", "label": "Cotisation Mensuelle", "value": "85 000"},
+            {"key": "TOTAL_COTISATION_ACTUELLE", "label": "Cotisations cumulées", "value": "1 445 000"},
+          ]
+        },
+        {
+          "key": "PANEL_2",
+          "label": "Capital Retraite Est.",
+          "value": "80 412 620",
+          "indicators": [
+            {"key": "TOTAL_RENDEMENT_RETRAITE", "label": "Total Rendement Est.", "value": "38 232 620"},
+            {"key": "TOTAL_COTISATION_RETRAITE", "label": "Total Cotisation Est.", "value": "42 180 000"},
+          ]
+        },
+        {
+          "key": "PANEL_3",
+          "label": "Date de retraite",
+          "value": "29 déc. 2062",
+          "indicators": [
+            {"key": "DATE_ADHESION", "label": "Date d'adhésion", "value": "06 janv. 2026"},
+            {"key": "PERIODE_RESTANTE", "label": "Période Restante", "value": "36 ans, 8 mois"},
+          ]
+        },
+        {
+          "key": "PANEL_4",
+          "label": "Pension Estimée",
+          "value": "790 840",
+          "indicators": [
+            {"key": "PENSION_RECUE", "label": "Type de projection", "value": "Rente sur 10 ans"},
+            {"key": "TAUX_REMPLACEMENT", "label": "Taux de Remplacement", "value": "72 %"},
+          ]
+        },
+      ]
+    });
   }
 
   List<Map<String, dynamic>> getRecentActivities(String userId) {

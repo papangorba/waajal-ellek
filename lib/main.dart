@@ -10,7 +10,7 @@ import 'config/theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/user_provider.dart';
 import 'dart:io';
-
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -49,6 +49,7 @@ class WaajalElekApp extends StatelessWidget {
 
       ],
       child: MaterialApp(
+        navigatorKey: navigatorKey,
         title: 'Waajal Ëlëk',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,

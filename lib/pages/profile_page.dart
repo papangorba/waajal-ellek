@@ -3,11 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../config/constants.dart';
-import '../utils/date_formatter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-
-
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -17,6 +14,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isRefreshing = false;
+  DateTime? _lastRefreshed;
 
   @override
   void initState() {
@@ -37,10 +36,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _refreshProfileFromApi() async {
-    final userProvider = context.read<UserProvider>();
-    // si on veux appeler le backend pour rafraîchir les données
-    // par exemple userProvider.fetchUserProfile();
+  Future<void> _refreshProfileFromApi() async {
+    setState(() => _isRefreshing = true);
+    try {
+      // final userProvider = context.read<UserProvider>();
+      // await userProvider.fetchUserProfile();
+      await Future.delayed(const Duration(milliseconds: 600)); // simulé
+      setState(() => _lastRefreshed = DateTime.now());
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Impossible de mettre à jour le profil.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isRefreshing = false);
+    }
+  }
+
+  String _formatLastRefreshed() {
+    if (_lastRefreshed == null) return '';
+    final h = _lastRefreshed!.hour.toString().padLeft(2, '0');
+    final m = _lastRefreshed!.minute.toString().padLeft(2, '0');
+    return 'Données mises à jour à ${h}h$m';
   }
 
 
@@ -114,8 +135,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
@@ -125,147 +144,247 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            child: Text(
-              user.prenom.substring(0, 1).toUpperCase(),
-              style: const TextStyle(
-                fontSize: 40,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+    return RefreshIndicator(
+        onRefresh: _refreshProfileFromApi,
+      child:SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+
+            // 🔵 HEADER
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            user.nomComplet,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            user.email,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Chip(
-            label: Text(user.statut.toUpperCase()),
-            backgroundColor: user.isRetraite
-                ? Colors.orange[100]
-                : Colors.green[100],
-          ),
-          const SizedBox(height: 32),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundColor: Colors.white.withOpacity(0.25),
+                    child: Text(
+                      user.prenom.substring(0, 1).toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 35,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
                   Text(
-                    'Informations personnelles',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    user.nomComplet,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const Divider(height: 24),
-                  _InfoTile(
-                    icon: Icons.badge,
-                    label: 'Matricule',
-                    value: user.matricule,
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    user.email,
+                    style: const TextStyle(color: Colors.white70),
                   ),
-                  _InfoTile(
-                    icon: Icons.military_tech,
-                    label: 'Grade',
-                    value: AppConstants.militaryRanks[user.grade] ?? user.grade,
+
+                  const SizedBox(height: 8),
+
+                  Chip(
+                    label: Text(user.statut.toUpperCase()),
+                    backgroundColor: user.isRetraite
+                        ? Colors.orange[100]
+                        : Colors.green[100],
                   ),
-                  if (user.telephone != null)
-                    _InfoTile(
-                      icon: Icons.phone,
-                      label: 'Téléphone',
-                      value: user.telephone!,
-                    ),
-                  if (user.dateNaissance != null)
-                    _InfoTile(
-                      icon: Icons.cake,
-                      label: 'Date de naissance',
-                      value: user.dateNaissance! ,
-                    ),
-                  if (user.dateEngagement != null)
-                    _InfoTile(
-                      icon: Icons.work,
-                      label: 'Date d\'engagement',
-                      value: user.dateEngagement! ,
-                    ),
-                  if (user.dateRetraite != null)
-                    _InfoTile(
-                      icon: Icons.event,
-                      label: 'Date de retraite',
-                      value: user.dateRetraite!,
-                    ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Column(
-              children: [
-                //ListTile(
-                //  leading: const Icon(Icons.edit),
-                //  title: const Text('Modifier le profil'),
-                //  trailing: const Icon(Icons.chevron_right),
-                //  onTap: () {},
-               // ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.lock),
-                  title: const Text('Changer le mot de passe'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+            //BARRE DE RAFRAÎCHISSEMENT ────────────────────────────────
+            if (_isRefreshing || _lastRefreshed != null)
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  border: Border.all(color: Colors.blue[100]!),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.notifications),
-                  title: const Text('Notifications'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                child: Row(
+                  children: [
+                    if (_isRefreshing)
+                      const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else
+                      const Icon(Icons.check_circle_outline,
+                          size: 14, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    Text(
+                      _isRefreshing
+                          ? 'Mise à jour en cours...'
+                          : _formatLastRefreshed(),
+                      style: TextStyle(fontSize: 12, color: Colors.blue[800]),
+                    ),
+                  ],
                 ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.help),
-                  title: const Text('Aide et support'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showSupportOptions(context),
+              ),
+
+            const SizedBox(height:16),
+
+            //INFOS
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 3,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Informations personnelles",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Divider(height: 20),
+
+                    _InfoTile(
+                      icon: Icons.badge,
+                      iconColor: Colors.blue,
+                      iconBg: Colors.blue.shade50,
+                      label: 'Matricule',
+                      value: user.matricule,
+                    ),
+                    _InfoTile(
+                      icon: Icons.military_tech,
+                      iconColor: Colors.amber.shade800,
+                      iconBg: Colors.amber.shade50,
+                      label: 'Grade',
+                      value: AppConstants.militaryRanks[user.grade] ?? user.grade,
+                    ),
+
+                    if (user.telephone != null)
+                      _InfoTile(
+                        icon: Icons.phone,
+                        iconColor: Colors.green,
+                        iconBg: Colors.green.shade50,
+                        label: 'Téléphone',
+                        value: user.telephone!,
+                      ),
+
+                    if (user.dateNaissance != null)
+                      _InfoTile(
+                        icon: Icons.cake,
+                        iconColor: Colors.blue,
+                        iconBg: Colors.blue.shade50,
+                        label: 'Date de naissance',
+                        value: user.dateNaissance!,
+                      ),
+
+                    if (user.dateEngagement != null)
+                      _InfoTile(
+                        icon: Icons.work,
+                        iconColor: Colors.green,
+                        iconBg: Colors.green.shade50,
+                        label: 'Date d\'engagement',
+                        value: user.dateEngagement!,
+                      ),
+
+                    if (user.dateRetraite != null)
+                      _InfoTile(
+                        icon: Icons.event,
+                        iconColor: Colors.orange,
+                        iconBg: Colors.orange.shade50,
+                        label: 'Date de retraite',
+                        value: user.dateRetraite!,
+                      ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.download),
-            label: const Text('Télécharger mes données'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+
+            const SizedBox(height: 16),
+
+            // ⚙️ ACTIONS
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 2,
+              child: Column(
+                children: [
+                  _ActionTile(
+                    icon: Icons.lock,
+                    iconBg: Colors.green.shade50,
+                    iconColor: Colors.green,
+                    title: 'Changer le mot de passe',
+                    subtitle: 'Sécurisez votre compte régulièrement',
+                    onTap: () => {},
+                  ),
+
+                  const Divider(height: 1),
+
+                  _ActionTile(
+                    icon: Icons.support_agent,
+                    iconBg: Colors.blue.shade50,
+                    iconColor: Colors.blue,
+                    title: 'Aide et support',
+                    subtitle: 'Appel ou WhatsApp disponible',
+                    onTap: () => _showSupportOptions(context),
+                  ),
+                  _ActionTile(
+                    icon: Icons.language,
+                    iconBg: Colors.orange.shade50,
+                    iconColor: Colors.orange,
+                    title: 'Langue',
+                    subtitle: 'Français',
+                    onTap: () {
+                      //sélection de langue
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+            // ── VERSION ──────────────────────────────────────────────────
+            const SizedBox(height: 10),
+            Text(
+              'Version 2.1.0 · Waajal Eleek',
+              style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ) ,
     );
+
   }
 }
 
 class _InfoTile extends StatelessWidget {
   final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
   final String label;
   final String value;
 
   const _InfoTile({
     required this.icon,
+    required this.iconColor,
+    required this.iconBg,
     required this.label,
     required this.value,
   });
@@ -276,7 +395,15 @@ class _InfoTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: Colors.grey[600]),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 20, color: iconColor),
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -305,3 +432,44 @@ class _InfoTile extends StatelessWidget {
     );
   }
 }
+
+class _ActionTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _ActionTile({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: iconBg,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 20, color: iconColor),
+      ),
+      title: Text(title, style: const TextStyle(fontSize: 14)),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+      ),
+      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+      onTap: onTap,
+    );
+  }
+}
+

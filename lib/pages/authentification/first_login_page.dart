@@ -127,7 +127,7 @@ class _FirstLoginPageState extends State<FirstLoginPage> {
 
               Center(
                 child: Image.asset(
-                  'assets/images/forces_arm__e.jpg',
+                  'assets/images/wadjal elek.png',
                   width: 140,
                   height: 140,
                 ),

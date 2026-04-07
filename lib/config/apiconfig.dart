@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
@@ -27,11 +28,9 @@ class ApiConfig {
   static const login = "/api/mobile/auth/login";
   static const profile = "/api/mobile/user-profile";
   static const logout = "/api/mobile/auth/logout";
+  static const appStatus = "/api/mobile/app/status";
+  static const userAccess = "/api/mobile/user/access";
 
-  // Client HTTP normal
-  //static http.Client getHttpClient() {
- //   return http.Client();
- // }
 
   static http.Client getHttpClient() {
     final httpClient = HttpClient(
@@ -68,5 +67,66 @@ class ApiConfig {
   static Uri uri(String endpoint) {
     return Uri.parse("$baseUrl$endpoint");
   }
+
+  // ─── Requêtes génériques ──────────────────────────────────────────────────
+
+  /// GET sans authentification
+  static Future<http.Response> get(String endpoint) async {
+    final client = getHttpClient();
+    try {
+      return await client
+          .get(uri(endpoint), headers: defaultHeaders)
+          .timeout(const Duration(seconds: 10));
+    } finally {
+      client.close();
+    }
+  }
+
+  /// GET avec token
+  static Future<http.Response> getAuth(String endpoint, String token) async {
+    final client = getHttpClient();
+    try {
+      return await client
+          .get(uri(endpoint), headers: getauthHeaders(token))
+          .timeout(const Duration(seconds: 10));
+    } finally {
+      client.close();
+    }
+  }
+
+  /// POST sans authentification
+  static Future<http.Response> post(
+      String endpoint, Map<String, dynamic> body) async {
+    final client = getHttpClient();
+    try {
+      return await client
+          .post(
+        uri(endpoint),
+        headers: defaultHeaders,
+        body: jsonEncode(body),
+      )
+          .timeout(const Duration(seconds: 10));
+    } finally {
+      client.close();
+    }
+  }
+
+  /// POST avec token
+  static Future<http.Response> postAuth(
+      String endpoint, String token, Map<String, dynamic> body) async {
+    final client = getHttpClient();
+    try {
+      return await client
+          .post(
+        uri(endpoint),
+        headers: getauthHeaders(token),
+        body: jsonEncode(body),
+      )
+          .timeout(const Duration(seconds: 10));
+    } finally {
+      client.close();
+    }
+  }
+
 
 }

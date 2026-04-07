@@ -3,6 +3,32 @@ import 'package:http/http.dart' as http;
 import '../config/apiconfig.dart';
 import '../models/auth_user_model.dart';
 
+
+class _AuthHttpClient extends http.BaseClient {
+  final http.Client _inner = http.Client();
+  final Future<bool> Function() onRefreshToken;
+  final Future<void> Function() onForceLogout;
+
+  _AuthHttpClient({
+    required this.onRefreshToken,
+    required this.onForceLogout,
+  });
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final response = await _inner.send(request);
+
+    if (response.statusCode == 401) {
+      final refreshed = await onRefreshToken();
+      if (!refreshed) {
+        await onForceLogout();
+      }
+    }
+
+    return response;
+  }
+}
+
 class AuthService {
   final http.Client _client = ApiConfig.getHttpClient();
 

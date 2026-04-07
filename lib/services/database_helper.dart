@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/auth_user_model.dart';
@@ -24,13 +25,15 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 6,
+      version: 7,              // ← incrémenté
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
   }
 
   Future<void> _onCreate(Database db, int version) async {
+
+    // Table users
     await db.execute('''
       CREATE TABLE users (
         id TEXT PRIMARY KEY,
@@ -48,7 +51,7 @@ class DatabaseHelper {
       )
     ''');
 
-    //table cotisation
+    // Table cotisations
     await db.execute('''
       CREATE TABLE cotisations (
         id INTEGER PRIMARY KEY,
@@ -63,7 +66,7 @@ class DatabaseHelper {
       )
     ''');
 
-    //table pension
+    // Table pensions
     await db.execute('''
       CREATE TABLE pensions (
         id INTEGER PRIMARY KEY,
@@ -77,28 +80,18 @@ class DatabaseHelper {
         FOREIGN KEY (user_id) REFERENCES users (id)
       )
     ''');
-  //table dashbord
-    await db.execute('''
-  CREATE TABLE dashboard_stats (
-    user_id TEXT PRIMARY KEY,
-    total_cotisation REAL NOT NULL,
-    cotisation_mensuelle REAL NOT NULL,
-    cotisation_retraite REAL NOT NULL,
-    capital_actuel REAL NOT NULL,
-    taux_rendement REAL NOT NULL,
-    rendement_cumule REAL NOT NULL,
-    date_adhesion TEXT NOT NULL,
-    periode_cumulee TEXT NOT NULL,
-    periode_restante TEXT NOT NULL,
-    date_retraite TEXT NOT NULL,
-    pension_mensuelle REAL NOT NULL,
-    pension_recue TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users (id)
-  )
-''');
 
-    //table recent activite
+    // Table dashboard — stockage JSON brut, indépendant des clés
+    await db.execute('''
+      CREATE TABLE dashboard_stats (
+        user_id TEXT PRIMARY KEY,
+        panels_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )
+    ''');
+
+    // Table activités récentes
     await db.execute('''
       CREATE TABLE recent_activities (
         id INTEGER PRIMARY KEY,
@@ -113,7 +106,8 @@ class DatabaseHelper {
         FOREIGN KEY (user_id) REFERENCES users (id)
       )
     ''');
-   //table last synchronisation
+
+    // Table sync
     await db.execute('''
       CREATE TABLE sync_metadata (
         key TEXT PRIMARY KEY,
@@ -170,40 +164,24 @@ class DatabaseHelper {
           FOREIGN KEY (user_id) REFERENCES users (id)
         )
       ''');
+    }
 
-      // Créer pensions et recent_activities si elles n'existaient pas
+    // ← Migration vers version 7 : dashboard générique JSON
+    if (oldVersion < 7) {
+      await db.execute('DROP TABLE IF EXISTS dashboard_stats');
       await db.execute('''
-        CREATE TABLE IF NOT EXISTS pensions (
-          id INTEGER PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          adherant_id INTEGER NOT NULL,
-          date_versement TEXT,
-          montant REAL NOT NULL,
-          type_pension TEXT NOT NULL,
-          statut TEXT,
-          created_at TEXT,
-          FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-      ''');
-
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS recent_activities (
-          id INTEGER PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          adherant_id INTEGER NOT NULL,
-          date_versement TEXT,
-          montant REAL NOT NULL,
-          statut TEXT NOT NULL,
-          type TEXT NOT NULL,
-          type_transaction TEXT NOT NULL,
-          created_at TEXT,
+        CREATE TABLE dashboard_stats (
+          user_id TEXT PRIMARY KEY,
+          panels_json TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
           FOREIGN KEY (user_id) REFERENCES users (id)
         )
       ''');
     }
   }
 
-  //user
+  // ─── USERS ───────────────────────────────────────────────────────────────
+
   Future<void> saveUser(UserProfile user) async {
     final db = await database;
     await db.insert(
@@ -248,14 +226,13 @@ class DatabaseHelper {
     );
   }
 
+  // ─── COTISATIONS ─────────────────────────────────────────────────────────
 
-  //save cotisation
   Future<void> saveCotisations(
       String userId, int adherantId, List<Cotisation> cotisations) async {
     final db = await database;
     final batch = db.batch();
 
-    //Supprimer les anciennes données avant d'insérer les nouvelles
     batch.delete('cotisations', where: 'user_id = ?', whereArgs: [userId]);
 
     for (final cot in cotisations) {
@@ -276,7 +253,7 @@ class DatabaseHelper {
     }
 
     await batch.commit(noResult: true);
-    print('${cotisations.length} cotisations sauvegardées (userId: $userId, adherantId: $adherantId)');
+    print('${cotisations.length} cotisations sauvegardées');
   }
 
   Future<List<Cotisation>> getCotisations(String userId) async {
@@ -303,13 +280,13 @@ class DatabaseHelper {
     }).toList();
   }
 
-  // save pension
+  // ─── PENSIONS ─────────────────────────────────────────────────────────────
+
   Future<void> savePensions(
       String userId, int adherantId, List<PensionModel> pensions) async {
     final db = await database;
     final batch = db.batch();
 
-    // Supprimer les anciennes données avant d'insérer les nouvelles
     batch.delete('pensions', where: 'user_id = ?', whereArgs: [userId]);
 
     for (final pension in pensions) {
@@ -357,30 +334,35 @@ class DatabaseHelper {
     }).toList();
   }
 
-  //save infos dashbord
-  Future<void> saveDashboardStats(String userId, DashboardStatsModel s) async {
+  // ─── DASHBOARD — JSON brut, indépendant des clés ──────────────────────────
+
+  Future<void> saveDashboardStats(
+      String userId, DashboardStatsModel stats) async {
     final db = await database;
+
+    final panelsJson = jsonEncode(
+      stats.panels.map((p) => {
+        'key': p.key,
+        'label': p.label,
+        'value': p.value,
+        'indicators': p.indicators.map((i) => {
+          'key': i.key,
+          'label': i.label,
+          'value': i.value,
+        }).toList(),
+      }).toList(),
+    );
+
     await db.insert(
       'dashboard_stats',
       {
         'user_id': userId,
-        'total_cotisation': s.totalCotisation,
-        'cotisation_mensuelle': s.cotisationMensuelle,
-        'cotisation_retraite': s.cotisationRetraite,
-        'capital_actuel': s.capitalActuel,
-        'taux_rendement': s.tauxRendement,
-        'rendement_cumule': s.rendementCumule,
-        'date_adhesion': s.dateAdhesion,
-        'periode_cumulee': s.periodeCumulee,
-        'periode_restante': s.periodeRestante,
-        'date_retraite': s.dateRetraite,
-        'pension_mensuelle': s.pensionMensuelle,
-        'pension_recue': s.pensionRecue,
+        'panels_json': panelsJson,
         'updated_at': DateTime.now().toIso8601String(),
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
-    print('Dashboard sauvegardé');
+    print('Dashboard sauvegardé (${stats.panels.length} panels)');
   }
 
   Future<DashboardStatsModel?> getDashboardStats(String userId) async {
@@ -392,30 +374,23 @@ class DatabaseHelper {
     );
     if (res.isEmpty) return null;
 
-    final d = res.first;
+    final rawPanels =
+    jsonDecode(res.first['panels_json'] as String) as List<dynamic>;
+
     return DashboardStatsModel(
-      totalCotisation: d['total_cotisation'] as double,
-      cotisationMensuelle: d['cotisation_mensuelle'] as double,
-      cotisationRetraite: d['cotisation_retraite'] as double,
-      capitalActuel: d['capital_actuel'] as double,
-      tauxRendement: d['taux_rendement'] as double,
-      rendementCumule: d['rendement_cumule'] as double,
-      dateAdhesion: d['date_adhesion'] as String,
-      periodeCumulee: d['periode_cumulee'] as String,
-      periodeRestante: d['periode_restante'] as String,
-      dateRetraite: d['date_retraite'] as String,
-      pensionMensuelle: d['pension_mensuelle'] as double,
-      pensionRecue: d['pension_recue'] as String,
+      panels: rawPanels
+          .map((e) => DashboardPanel.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
-  //save recent activite
+  // ─── ACTIVITÉS RÉCENTES ───────────────────────────────────────────────────
+
   Future<void> saveRecentActivities(
       String userId, List<RecentActivityModel> activities) async {
     final db = await database;
     final batch = db.batch();
 
-    //Supprimer les anciennes données avant d'insérer les nouvelles
     batch.delete('recent_activities', where: 'user_id = ?', whereArgs: [userId]);
 
     for (final activity in activities) {
@@ -466,8 +441,8 @@ class DatabaseHelper {
     }).toList();
   }
 
-  // ============================
-  //mise a jour des sync
+  // ─── SYNC METADATA ────────────────────────────────────────────────────────
+
   Future<void> updateSyncMetadata(String key, DateTime time) async {
     final db = await database;
     await db.insert(
@@ -488,9 +463,9 @@ class DatabaseHelper {
     if (res.isEmpty) return null;
     return DateTime.parse(res.first['last_sync'] as String).toLocal();
   }
+
   Future<void> updateLastSync(String key) async {
     final db = await database;
-
     await db.insert(
       'sync_metadata',
       {
@@ -501,8 +476,8 @@ class DatabaseHelper {
     );
   }
 
-  // ============================
-  //suppresion  des infos de l'utilisateur connecter a la deconnexion
+  // ─── CLEAR USER DATA ──────────────────────────────────────────────────────
+
   Future<void> clearUserData(String userId) async {
     final db = await database;
     await db.delete('cotisations', where: 'user_id = ?', whereArgs: [userId]);

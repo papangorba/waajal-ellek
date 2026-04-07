@@ -1,99 +1,68 @@
-// Modèle pour le dashboard
-class DashboardStatsModel {
-  // PANEL_1 - Total Cotisation
-  final double totalCotisation;
-  final double cotisationMensuelle;
-  final double cotisationRetraite;
+// Indicateur générique — affiche label + value tels quels
+class PanelIndicator {
+  final String key;
+  final String label;
+  final String value;
 
-  // PANEL_2 - Capital Actuel
-  final double capitalActuel;
-  final double tauxRendement;
-  final double rendementCumule;
-
-  // PANEL_3 - Date d'adhésion
-  final String dateAdhesion;
-  final String periodeCumulee;
-  final String periodeRestante;
-
-  // PANEL_4 - Date de retraite
-  final String dateRetraite;
-  final double pensionMensuelle;
-  final String pensionRecue;
-
-  DashboardStatsModel({
-    required this.totalCotisation,
-    required this.cotisationMensuelle,
-    required this.cotisationRetraite,
-    required this.capitalActuel,
-    required this.tauxRendement,
-    required this.rendementCumule,
-    required this.dateAdhesion,
-    required this.periodeCumulee,
-    required this.periodeRestante,
-    required this.dateRetraite,
-    required this.pensionMensuelle,
-    required this.pensionRecue,
+  PanelIndicator({
+    required this.key,
+    required this.label,
+    required this.value,
   });
 
-  factory DashboardStatsModel.fromJson(Map<String, dynamic> json) {
-    final panels = json['panels'] as List<dynamic>;
-
-    // Helper : value principale d'un panel
-    String getPanelValue(String panelKey) {
-      final panel = panels.firstWhere(
-            (p) => p['key'] == panelKey,
-        orElse: () => {'value': '0'},
-      );
-      return panel['value']?.toString() ?? '0';
-    }
-
-    double getPanelDouble(String panelKey) {
-      return double.tryParse(getPanelValue(panelKey)) ?? 0.0;
-    }
-
-    // Helper : indicateur dans un panel
-    String getIndicator(String panelKey, String indicatorKey) {
-      final panel = panels.firstWhere(
-            (p) => p['key'] == panelKey,
-        orElse: () => {'indicators': []},
-      );
-      final indicators = panel['indicators'] as List<dynamic>? ?? [];
-      final indicator = indicators.firstWhere(
-            (i) => i['key'] == indicatorKey,
-        orElse: () => {'value': '0'},
-      );
-      return indicator['value']?.toString() ?? '0';
-    }
-
-    double getIndicatorDouble(String panelKey, String indicatorKey) {
-      return double.tryParse(getIndicator(panelKey, indicatorKey)) ?? 0.0;
-    }
-
-    return DashboardStatsModel(
-      // PANEL_1
-      totalCotisation: getPanelDouble('PANEL_1'),
-      cotisationMensuelle: getIndicatorDouble('PANEL_1', 'COTISATION_MENSUEL'),
-      cotisationRetraite: getIndicatorDouble('PANEL_1', 'COTISATION_RETRAITE'),
-
-      // PANEL_2
-      capitalActuel: getPanelDouble('PANEL_2'),
-      tauxRendement: getIndicatorDouble('PANEL_2', 'TAUX_RENDEMENT'),
-      rendementCumule: getIndicatorDouble('PANEL_2', 'RENDEMENT_CUMMULE'),
-
-      // PANEL_3
-      dateAdhesion: getPanelValue('PANEL_3'),
-      periodeCumulee: getIndicator('PANEL_3', 'PERIODE_CUMULEE'),
-      periodeRestante: getIndicator('PANEL_3', 'PERIODE_RESTANTE'),
-
-      // PANEL_4
-      dateRetraite: getPanelValue('PANEL_4'),
-      pensionMensuelle: getIndicatorDouble('PANEL_4', 'PENSION_MENSUELLE'),
-      pensionRecue: getIndicator('PANEL_4', 'PENSION_RECUE'),
+  factory PanelIndicator.fromJson(Map<String, dynamic> json) {
+    return PanelIndicator(
+      key: json['key']?.toString() ?? '',
+      label: json['label']?.toString() ?? '',
+      value: json['value']?.toString() ?? '',
     );
   }
 }
 
-// Modèle pour les activités récentes
+// Panel générique — affiche label + value + indicators dans l'ordre reçu
+class DashboardPanel {
+  final String key;
+  final String label;
+  final String value;
+  final List<PanelIndicator> indicators;
+
+  DashboardPanel({
+    required this.key,
+    required this.label,
+    required this.value,
+    required this.indicators,
+  });
+
+  factory DashboardPanel.fromJson(Map<String, dynamic> json) {
+    final rawIndicators = json['indicators'] as List<dynamic>? ?? [];
+    return DashboardPanel(
+      key: json['key']?.toString() ?? '',
+      label: json['label']?.toString() ?? '',
+      value: json['value']?.toString() ?? '',
+      indicators: rawIndicators
+          .map((e) => PanelIndicator.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+// Modèle dashboard — liste de panels dans l'ordre reçu
+class DashboardStatsModel {
+  final List<DashboardPanel> panels;
+
+  DashboardStatsModel({required this.panels});
+
+  factory DashboardStatsModel.fromJson(Map<String, dynamic> json) {
+    final rawPanels = json['panels'] as List<dynamic>? ?? [];
+    return DashboardStatsModel(
+      panels: rawPanels
+          .map((e) => DashboardPanel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+// Modèle activités récentes — INCHANGÉ
 class RecentActivityModel {
   final int id;
   final int adherantId;
@@ -129,12 +98,11 @@ class RecentActivityModel {
     if (dateVersement == null || dateVersement!.isEmpty) return DateTime.now();
     try {
       return DateTime.parse(dateVersement!);
-    } catch (e) {
+    } catch (_) {
       return DateTime.now();
     }
   }
 
-  //Statut normalisé : gère "Payé", "Paye", "PAYE", "Actif"
   bool get isPaid {
     final s = statut.toLowerCase().replaceAll('é', 'e').trim();
     return s == 'paye' || s == 'actif';
