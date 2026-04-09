@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:waajal_elek/config/theme.dart';
-import 'package:waajal_elek/pages/authentification/otp_verification_page.dart';
+import 'package:waajal_elek/pages/authentification/otp_verif_et_change_password_page.dart';
+
+import '../../config/apiconfig.dart';
 
 class FirstLoginPage extends StatefulWidget {
   const FirstLoginPage({super.key});
@@ -10,99 +13,85 @@ class FirstLoginPage extends StatefulWidget {
 }
 
 class _FirstLoginPageState extends State<FirstLoginPage> {
-
-  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController phoneController     = TextEditingController();
   final TextEditingController matriculeController = TextEditingController();
+  bool _isLoading = false;
 
-  void validatePhoneNumber() {
+  @override
+  void dispose() {
+    phoneController.dispose();
+    matriculeController.dispose();
+    super.dispose();
+  }
 
-    String phone = phoneController.text.trim();
+  Future<void> _submit() async {
+    final username   = matriculeController.text.trim();
+    final phone      = phoneController.text.trim();
 
-    if (!phone.startsWith('+')) {
-      phone = '+221$phone';
+    if (username.isEmpty) {
+      _showSnack("Veuillez entrer votre matricule");
+      return;
     }
 
-    if (phone.length < 12 || !RegExp(r'^\+221\d{9}$').hasMatch(phone)) {
+    if (phone.isEmpty) {
+      _showSnack("Veuillez entrer votre numéro de téléphone");
+      return;
+    }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Numéro invalide. Format attendu : 77XXXXXXX"),
-        ),
+    // Retirer +221 si présent, garder uniquement les chiffres
+    final cleanPhone = phone
+        .replaceAll(RegExp(r'^\+221'), '')
+        .replaceAll(' ', '');
+
+    if (!RegExp(r'^\d{9}$').hasMatch(cleanPhone)) {
+      _showSnack("Numéro invalide. Format attendu : 77XXXXXXX");
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await ApiConfig.post(
+        ApiConfig.passwordResetRequest,
+        {
+          'username': username,
+          'phone': cleanPhone,
+        },
       );
 
-    } else {
+      if (!mounted) return;
 
-      showOtpChoiceDialog(phone);
+      final body = jsonDecode(response.body);
 
+      if (response.statusCode == 200) {
+        // Compte trouvé → navigation vers la page OTP
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OtpVerificationPage(
+              phoneNumber: '+221$cleanPhone',
+              username: username,
+            ),
+          ),
+        );
+      } else {
+        _showSnack(body['message'] ?? "Une erreur est survenue");
+      }
+    } on Exception catch (_) {
+      _showSnack("Erreur de connexion au serveur");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void showOtpChoiceDialog(String phoneNumber) {
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-
-        title: const Text(
-          "Choisir la méthode de réception",
-          style: TextStyle(
-            color: AppTheme.primaryColor,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-
-        content: const Text(
-          "Comment souhaitez-vous recevoir le code OTP ?",
-          style: TextStyle(fontSize: 16),
-        ),
-
-        actions: [
-
-          TextButton(
-            onPressed: () {
-
-              Navigator.pop(context);
-
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => OtpVerificationPage(
-                    phoneNumber: phoneNumber,
-                    receptionMethod: "SMS",
-                  ),
-                ),
-              );
-            },
-            child: const Text("Par SMS"),
-          ),
-
-          TextButton(
-            onPressed: () {
-
-              Navigator.pop(context);
-
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => OtpVerificationPage(
-                    phoneNumber: phoneNumber,
-                    receptionMethod: "WhatsApp",
-                  ),
-                ),
-              );
-            },
-            child: const Text("Par WhatsApp"),
-          ),
-
-        ],
-      ),
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
 
@@ -127,7 +116,7 @@ class _FirstLoginPageState extends State<FirstLoginPage> {
 
               Center(
                 child: Image.asset(
-                  'assets/images/wadjal elek.png',
+                  'assets/images/wajal euleuk-02.png',
                   width: 140,
                   height: 140,
                 ),
@@ -136,17 +125,20 @@ class _FirstLoginPageState extends State<FirstLoginPage> {
               const SizedBox(height: 20),
 
               const Text(
-                "Entrez votre numéro de téléphone et votre matricule pour recevoir le code d'activation",
+                "Entrez votre matricule et votre numéro de téléphone "
+                    "pour recevoir le code d'activation par SMS",
                 textAlign: TextAlign.center,
               ),
 
               const SizedBox(height: 30),
 
+              // ── Matricule
               TextField(
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
+                controller: matriculeController,
                 decoration: InputDecoration(
-                  labelText: 'Numéro de téléphone',
+                  labelText: 'Matricule',
+                  hintText: 'Ex: papa_pnd',
+                  prefixIcon: const Icon(Icons.person_outline),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -157,10 +149,14 @@ class _FirstLoginPageState extends State<FirstLoginPage> {
 
               const SizedBox(height: 20),
 
+              // ── Numéro de téléphone
               TextField(
-                controller: matriculeController,
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
-                  labelText: 'Matricule',
+                  labelText: 'Numéro de téléphone',
+                  hintText: '77XXXXXXX',
+                  prefixIcon: const Icon(Icons.phone_outlined),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -171,33 +167,45 @@ class _FirstLoginPageState extends State<FirstLoginPage> {
 
               const SizedBox(height: 30),
 
+              // ── Bouton
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-
-                  onPressed: () {
+                  onPressed: _isLoading
+                      ? null
+                      : () {
                     FocusScope.of(context).unfocus();
-                    validatePhoneNumber();
+                    _submit();
                   },
-
-                  child: const Text(
-                    "Recevoir le code",
+                  child: _isLoading
+                      ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor:
+                      AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                      : const Text(
+                    "Recevoir le code par SMS",
                     style: TextStyle(
                       color: AppTheme.backgroundColor,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                 ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 160),
 
               const Center(
                 child: Text(

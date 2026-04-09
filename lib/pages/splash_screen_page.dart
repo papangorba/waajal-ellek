@@ -25,56 +25,34 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _initialize() async {
     final authProvider = context.read<AuthProvider>();
 
-    // Restaurer la session + délai splash
     await authProvider.restoreSession();
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
 
     try {
-      // ÉTAPE 1 — Statut de l'application
       final appStatus = await AppStatusService.getAppStatus();
 
       if (!mounted) return;
 
       if (!appStatus.isActive) {
-        _showMaintenanceDialog(
-          appStatus.message ??
-              "L'application est temporairement indisponible pour maintenance.",
-        );
+        _showMaintenanceDialog(appStatus.message ?? "L'application est temporairement indisponible.");
         return;
       }
 
       if (appStatus.needsUpdate) {
-        _showUpdateDialog(
-          appStatus.message ??
-              "Une nouvelle version est disponible. Veuillez mettre à jour pour continuer.",
-        );
+        _showUpdateDialog(appStatus.message ?? "Une nouvelle version est disponible.");
         return;
       }
 
-      // ÉTAPE 2 — Utilisateur connecté ?
+      // ✅ Session locale valide → on va à Home
+      // Si le token est invalide/expiré, le 401 sur le prochain appel
+      // déclenchera automatiquement forceLogout() → redirection login
       if (!authProvider.isAuthenticated) {
         _goToLogin();
         return;
       }
 
-      // ÉTAPE 3 — Accès utilisateur
-      final userAccess = await AppStatusService.getUserAccess(
-        authProvider.accessToken!,
-      );
-
-      if (!mounted) return;
-
-      if (!userAccess.isAllowed) {
-        _showAccessDeniedDialog(
-          userAccess.message ??
-              "Votre compte n'est pas autorisé à accéder à cette application.",
-        );
-        return;
-      }
-
-      // ÉTAPE 4 — Tout OK, charger profil → home
       final userProvider = context.read<UserProvider>();
       final userId = authProvider.userId?.toString();
       if (userId != null) {
@@ -87,11 +65,13 @@ class _SplashScreenState extends State<SplashScreen> {
     } catch (e) {
       debugPrint('Erreur splash: $e');
       if (!mounted) return;
-      _goToLogin();
+      if (authProvider.isAuthenticated) {
+        _goToHome();
+      } else {
+        _goToLogin();
+      }
     }
   }
-
-  // ─── NAVIGATION ────────────────────────────────────────────────────────────
 
   void _goToLogin() {
     Navigator.of(context).pushReplacement(
@@ -105,7 +85,7 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 
-  // ─── DIALOGS ───────────────────────────────────────────────────────────────
+  //Dialog de maintenance
 
   void _showMaintenanceDialog(String message) {
     showDialog(
@@ -115,7 +95,7 @@ class _SplashScreenState extends State<SplashScreen> {
         insetPadding: const EdgeInsets.all(10),
         child: SizedBox(
           width: double.infinity,
-          height: MediaQuery.of(context).size.height * 0.9, // 🔥 80% écran
+          height: MediaQuery.of(context).size.height * 0.9, //80% de écran
           child: _AppDialog(
             icon: Icons.build_circle_outlined,
             iconColor: Colors.orange.shade700,
@@ -234,7 +214,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-// ─── WIDGETS RÉUTILISABLES ────────────────────────────────────────────────────
+//WIDGETS RÉUTILISABLES
 
 class _AppDialog extends StatelessWidget {
   final IconData icon;

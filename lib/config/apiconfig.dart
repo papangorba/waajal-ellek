@@ -29,7 +29,8 @@ class ApiConfig {
   static const profile = "/api/mobile/user-profile";
   static const logout = "/api/mobile/auth/logout";
   static const appStatus = "/api/mobile/app/status";
-  static const userAccess = "/api/mobile/user/access";
+  static const passwordResetRequest = "/api/mobile/password-reset/request/phone";
+  static const passwordResetConfirm = "/api/mobile/password-reset/confirm";
 
 
   static http.Client getHttpClient() {

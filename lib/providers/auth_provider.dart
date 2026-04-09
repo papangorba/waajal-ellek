@@ -36,24 +36,25 @@ class AuthProvider with ChangeNotifier {
   // refresh session
   Future<void> restoreSession() async {
     try {
+      // S'assurer que le storage est VRAIMENT initialisé
       await _initStorage();
 
-      _accessToken = _storageService?.getAccessToken();
-      _refreshToken = _storageService?.getRefreshToken();
+      // Maintenant on peut lire en sécurité
+      final token = _storageService!.getAccessToken();
+      final profileData = _storageService!.getJson('user_profile');
 
-      final userProfileData = _storageService?.getJson('user_profile');
-
-      if (_accessToken != null && userProfileData != null) {
-        _userProfile = UserProfile.fromJson(userProfileData);
-
-        print('Session restaurée pour: ${_userProfile?.nomComplet}');
+      if (token != null && token.isNotEmpty && profileData != null) {
+        _accessToken = token;
+        _refreshToken = _storageService!.getRefreshToken();
+        _userProfile = UserProfile.fromJson(profileData);
+        print('Session OK: ${_userProfile?.nomComplet}');
       } else {
-        print('Aucune session trouvée');
+        print('Pas de session: token=${token == null ? "null" : "ok"}, profile=${profileData == null ? "null" : "ok"}');
       }
-    } catch (e) {
-      print('Erreur restauration session: $e');
+    } catch (e, stack) {
+      print('Erreur restoreSession: $e');
+      print(stack);
     }
-
     notifyListeners();
   }
 

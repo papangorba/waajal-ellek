@@ -13,9 +13,12 @@ class StorageService {
 
   StorageService._();
 
+  // StorageService — rendre l'init atomique
   static Future<StorageService> getInstance() async {
-    _instance ??= StorageService._();
-    _preferences ??= await SharedPreferences.getInstance();
+    if (_instance != null && _preferences != null) return _instance!;
+
+    _preferences = await SharedPreferences.getInstance(); // toujours await
+    _instance = StorageService._();
     return _instance!;
   }
 

@@ -6,6 +6,8 @@ import '../config/constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import 'authentification/first_login_page.dart';
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -332,7 +334,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     iconColor: Colors.green,
                     title: 'Changer le mot de passe',
                     subtitle: 'Sécurisez votre compte régulièrement',
-                    onTap: () => {},
+                    onTap:  () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const FirstLoginPage()),
+                    ),
                   ),
 
                   const Divider(height: 1),

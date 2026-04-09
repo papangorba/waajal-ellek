@@ -11,6 +11,7 @@ class AppStatusModel {
     this.message,
   });
 
+
   bool get isActive => applicationStatus == 'ACTIF';
 
   bool get needsUpdate {
